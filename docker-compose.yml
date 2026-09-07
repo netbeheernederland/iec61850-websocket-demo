@@ -96,7 +96,7 @@ services:
 #      PYTHONUNBUFFERED: 1
       BFF_CONNECTIONS_FILE: "/config/connections.json"
     volumes:
-      - ./bff/config:/config
+      - ./modules/bff/config:/config
       - certs:/certs:ro
     networks:
       - rti-network
@@ -141,7 +141,7 @@ services:
       - "rti.host=rti-fsp01"
       - "rti.port=5001"
     volumes:
-        - ./fsp01/models:/models
+        - ./modules/fsp01/models:/models
         - certs:/certs:ro
 
   # Second FSP instance
