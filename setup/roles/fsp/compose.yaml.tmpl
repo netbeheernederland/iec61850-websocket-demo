@@ -1,0 +1,27 @@
+# rti-fsp (ACSI server / RTI-FSP), one container per machine.
+# Rendered per node by render.sh from nodes.env extras:
+#   cp=${FSP_CP}  port=${FSP_PORT}  model=${FSP_MODEL}
+# Host networking exposes ${FSP_PORT} on the VM IP.
+name: ${NODE_NAME}
+
+services:
+  rti-fsp:
+    image: rti-demo_rti-fsp:latest
+    container_name: ${NODE_NAME}
+    network_mode: host
+    environment:
+      PORT: "${FSP_PORT}"
+      CP: "${FSP_CP}"
+      PYTHONUNBUFFERED: "1"
+      LOG_LEVEL: debug
+      MODELPATH: "${FSP_MODELPATH}"
+    volumes:
+      - /etc/rti/models:/models
+      - /etc/rti/certs:/certs:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${FSP_PORT}/api/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s

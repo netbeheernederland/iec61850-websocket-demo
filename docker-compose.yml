@@ -1,0 +1,215 @@
+services:
+  # Certificate generator
+  # Installs cfssl, builds the CA + server/client certificates from the cfssl
+  # config files in ./certs, and writes the results into the shared "certs"
+  # volume. Every other service mounts that volume read-only at /certs.
+  # It is idempotent: if the volume already holds certificates it exits 0
+  # immediately, so it is safe to leave in the dependency graph.
+  cert-generator:
+    image: alpine:3.20
+    container_name: cert-generator
+    environment:
+      # Comma-separated SANs baked into the server & client certificates.
+      # Override from the host env (SERVER_HOSTNAMES=...) if you add services.
+      SERVER_HOSTNAMES: ${SERVER_HOSTNAMES:-localhost,127.0.0.1,rti-hmi,bff-server,rti-fsp01,rti-fsp02,rti-so}
+      CFSSL_VERSION: "1.6.5"
+    volumes:
+      - ./certs:/config:ro
+      - certs:/out
+    working_dir: /out
+    command:
+      - sh
+      - -eu
+      - -c
+      - |
+        if [ -f /out/ca.pem ] && [ -f /out/server.pem ] && [ -f /out/client.pem ]; then
+          echo "certificates already present in the 'certs' volume - nothing to do"
+          exit 0
+        fi
+
+        echo "installing cfssl $${CFSSL_VERSION}..."
+        apk add --no-cache curl ca-certificates >/dev/null
+        base="https://github.com/cloudflare/cfssl/releases/download/v$${CFSSL_VERSION}"
+        curl -fsSL -o /usr/local/bin/cfssl     "$${base}/cfssl_$${CFSSL_VERSION}_linux_amd64"
+        curl -fsSL -o /usr/local/bin/cfssljson "$${base}/cfssljson_$${CFSSL_VERSION}_linux_amd64"
+        chmod +x /usr/local/bin/cfssl /usr/local/bin/cfssljson
+
+        cp /config/ca-config.json /config/ca-csr.json \
+           /config/server-csr.json /config/client-csr.json /out/
+
+        echo "generating CA..."
+        cfssl gencert -initca ca-csr.json | cfssljson -bare ca
+
+        echo "generating server certificate (SANs: $${SERVER_HOSTNAMES})..."
+        cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json \
+          -profile=server -hostname="$${SERVER_HOSTNAMES}" \
+          server-csr.json | cfssljson -bare server
+
+        echo "generating client certificate..."
+        cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json \
+          -profile=client -hostname="$${SERVER_HOSTNAMES}" \
+          client-csr.json | cfssljson -bare client
+
+        chmod 644 /out/*.pem
+        echo "certificates written to the 'certs' volume:"
+        ls -1 /out/*.pem
+    networks:
+      - rti-network
+    restart: "no"
+
+  # HMI Web Server
+  rti-hmi:
+    image: rti-demo_rti-hmi:latest
+    container_name: rti-hmi
+    ports:
+      - "80:80"
+    depends_on:
+      bff-server:
+        condition: service_healthy
+      cert-generator:
+        condition: service_completed_successfully
+    volumes:
+      - certs:/certs:ro
+    networks:
+      - rti-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # BFF Server
+  bff-server:
+    image: rti-demo_bff-server:latest
+    container_name: bff-server
+    ports:
+      - "3000:3000"
+    depends_on:
+      cert-generator:
+        condition: service_completed_successfully
+    environment:
+      RTI_DOCKER_ENABLED: true
+      RTI_SERVICE_DISCOVERY_ENABLED: true
+      PORT: 3000
+      LOG_LEVEL: debug
+#      PYTHONUNBUFFERED: 1
+      BFF_CONNECTIONS_FILE: "/config/connections.json"
+    volumes:
+      - ./bff/config:/config
+      - certs:/certs:ro
+    networks:
+      - rti-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 30s
+      retries: 5
+      start_period: 30s
+    labels:
+      - "rti.service=bff-server"
+      - "rti.type=RTI-BFF"
+      - "rti.host=bff-server"
+      - "rti.port=3000"
+
+  # RTI-FSP (Acsi-Server)
+  rti-fsp01:
+    image: rti-demo_rti-fsp:latest
+    container_name: rti-fsp01
+    ports:
+      - "5001:5001"
+    depends_on:
+      cert-generator:
+        condition: service_completed_successfully
+    environment:
+      PORT: 5001
+      PYTHONUNBUFFERED: 1
+      CP: cp1
+      LOG_LEVEL: debug
+      MODELPATH: "/models/model.py"
+    networks:
+      - rti-network
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:5001/api/status" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    labels:
+      - "rti.service=rti-fsp01"
+      - "rti.type=RTI-FSP"
+      - "rti.host=rti-fsp01"
+      - "rti.port=5001"
+    volumes:
+        - ./fsp01/models:/models
+        - certs:/certs:ro
+
+  # Second FSP instance
+  rti-fsp02:
+    image: rti-demo_rti-fsp:latest
+    container_name: rti-fsp02
+    ports:
+      - "5005:5005"  # Map to different host port, same container port
+    depends_on:
+      cert-generator:
+        condition: service_completed_successfully
+    networks:
+      - rti-network
+    environment:
+      PORT: 5005
+      CP: cp2
+#      MODELPATH: /models/model_2.py
+      LOG_LEVEL: debug
+    volumes:
+      - certs:/certs:ro
+    healthcheck: # ✅ Add healthcheck (optional but recommended)
+      test: [ "CMD", "curl", "-f", "http://localhost:5005/api/status" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    labels: # ✅ Add labels for consistency
+      - "rti.service=rti-fsp02"
+      - "rti.type=RTI-FSP"
+      - "rti.host=rti-fsp02"
+      - "rti.port=5005"
+
+  # RTI SO (Acsi-Client)
+  rti-so:
+    image: rti-demo_rti-so:latest
+    container_name: rti-so
+    ports:
+      - "5000:5000"
+      - "8765:8765"    # WebSocket port - MUST ADD
+    depends_on:
+      cert-generator:
+        condition: service_completed_successfully
+    environment:
+      PORT: 5000
+      PYTHONUNBUFFERED: 1
+      LOG_LEVEL: debug
+    volumes:
+      - certs:/certs:ro
+    networks:
+      - rti-network
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:5000/api/status" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    labels:
+      - "rti.service=rti-so"
+      - "rti.type=RTI-SO"
+      - "rti.host=rti-so"
+      - "rti.port=5000"
+
+
+volumes:
+  # Shared certificate store populated by cert-generator, mounted read-only
+  # at /certs by every other service.
+  certs:
+
+networks:
+  rti-network:
+    driver: bridge

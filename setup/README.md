@@ -1,0 +1,95 @@
+# setup/ — one VM per role, from Ubuntu cloud images + cloud-init
+
+This turns the single-host `../docker-compose.yml` stack into a small fleet of
+Ubuntu KVM guests, one per **role**, each running just its slice of the stack
+via its own `compose.yaml`.
+
+| role   | node(s)                | containers                | notes |
+| ------ | ---------------------- | ------------------------- | ----- |
+| `edge` | `rti-edge`             | `bff-server`, `rti-hmi`   | also runs the fleet's **dhcpd** + **mDNS**; static IP `192.168.150.2` |
+| `so`   | `rti-so`               | `rti-so`                  | DHCP reservation `.11` |
+| `fsp`  | `rti-fsp01`, `rti-fsp02`, … | `rti-fsp` (1 per node) | templated; add machines by editing `nodes.env` |
+
+Key differences from the root compose stack:
+
+* **No `cert-generator` service.** `render.sh` mints one CA + server/client
+  cert on the host (containerised `cfssl`), with SANs covering every node name
+  and its `.local` alias, and embeds them in each node's cloud-init.
+* **Name resolution is mDNS.** Every node runs `avahi`; peers are addressed as
+  `<hostname>.local`. `connections.json` and the cert SANs use those names.
+  No `/etc/hosts` wiring.
+* **Addressing is DHCP** handed out by `rti-edge` (ISC `dhcpd`), with a static
+  reservation per named node keyed by a MAC derived from the node name. The
+  libvirt network does NAT + DNS only (no DHCP of its own).
+* **Images ship as `docker save` tarballs**, copied into each disk and
+  `docker load`ed on first boot. Nothing is pulled from a registry.
+* Containers use `network_mode: host`.
+
+## Layout
+
+```
+setup/
+  roles.env          # image, network, per-role sizing + tarball payload
+  nodes.env          # the fleet: one line per VM
+  download-images.sh # fetch + verify the Ubuntu cloud image
+  build-base.sh      # -> images/base-rti.qcow2 (docker, avahi, dhcpd baked in)
+  build-tarballs.sh  # docker save rti-demo_* -> images/*.tar
+  render.sh          # certs + templates -> build/<node>/{user-data,meta-data,spec,compose.yaml}
+  make-disks.sh      # per node: qcow2 overlay + virt-customize copy-in + seed ISO
+  launch.sh          # define libvirt net; virt-install edge first, then the rest
+  destroy.sh         # virsh destroy/undefine the fleet
+  up.sh              # render -> make-disks -> launch
+  libvirt/rti-demo-net.xml
+  roles/<role>/{compose.yaml[.tmpl], cloud-init.yaml.tmpl}   # self-contained
+  roles/fsp/models/  # *.py copied to every fsp node
+  images/  build/    # generated, git-ignored
+```
+
+## Host prerequisites
+
+`qemu-kvm`, `libvirt` + `virtinst`, `libguestfs-tools` (`virt-customize`),
+`cloud-image-utils` (`cloud-localds`) or `genisoimage`, `docker`, `curl`,
+`gettext-base` (`envsubst`). An SSH public key at `~/.ssh/id_ed25519.pub`
+(or `id_rsa.pub`, or `export SSH_PUBKEY=...`).
+
+## Run
+
+```bash
+cd setup
+
+# one-time
+./download-images.sh          # Ubuntu 24.04 cloud image
+./build-base.sh               # golden image (needs network; a few minutes)
+docker compose -f ../docker-compose.yml build    # if the rti-demo_* images aren't built yet
+./build-tarballs.sh           # docker save them
+
+# each time you change nodes.env / templates
+./up.sh                       # == ./render.sh && ./make-disks.sh && ./launch.sh
+
+virsh list --all
+virsh console rti-edge        # watch first boot
+ssh rti@192.168.150.2 'sudo cloud-init status --wait && docker ps'
+```
+
+Tear down with `./destroy.sh` (add `--keep-network` to leave `rti-demo-net`).
+
+## Adding an FSP machine
+
+Append a line to `nodes.env`:
+
+```
+"rti-fsp03  fsp   192.168.150.23   cp=cp3 port=5001 model=model3.py"
+```
+
+Drop `model3.py` in `roles/fsp/models/`, then `./up.sh`. `render.sh` picks up
+the new node for the cert SANs, the `dhcpd` reservations and
+`connections.json` automatically.
+
+## Notes / limitations
+
+* `launch.sh` boots `rti-edge` and waits for it to answer ICMP before starting
+  the others, so `dhcpd` is live when they request a lease.
+* BFF service discovery is disabled (`RTI_DOCKER_ENABLED=false`) — it can't see
+  other hosts' Docker. It uses the static `connections.json` only.
+* `roles.env` and `libvirt/rti-demo-net.xml` both hard-code the
+  `192.168.150.0/24` range; keep them in sync if you change it.

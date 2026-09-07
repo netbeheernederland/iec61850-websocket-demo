@@ -1,0 +1,10 @@
+<network>
+  <name>rti-demo-net</name>
+  <!-- NAT for outbound + a recursive DNS resolver at 192.168.150.1.
+       There is deliberately NO <dhcp> block here: the rti-edge node runs the
+       authoritative ISC dhcpd for 192.168.150.0/24. Keep the address range in
+       sync with NET_PREFIX / EDGE_IP in ../roles.env. -->
+  <forward mode='nat'/>
+  <bridge name='virbr-rti' stp='on' delay='0'/>
+  <ip address='192.168.150.1' netmask='255.255.255.0'/>
+</network>

@@ -1,0 +1,4 @@
+# downloaded base images, docker save tarballs, golden image
+images/
+# rendered per-node artifacts, overlay disks, seed ISOs, generated certs
+build/

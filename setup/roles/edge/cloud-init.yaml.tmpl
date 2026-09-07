@@ -1,0 +1,70 @@
+#cloud-config
+# Rendered by render.sh. NoCloud user-data for the rti-edge node:
+# HMI + BFF containers, plus the fleet's DHCP (isc-dhcp-server) and mDNS
+# (avahi) services. Static IP - it cannot lease from itself.
+hostname: ${NODE_NAME}
+fqdn: ${NODE_NAME}.${MDNS_DOMAIN}
+manage_etc_hosts: localhost
+preserve_hostname: false
+
+users:
+  - name: ${VM_USER}
+    groups: [sudo, docker]
+    shell: /bin/bash
+    sudo: "ALL=(ALL) NOPASSWD:ALL"
+    lock_passwd: true
+    ssh_authorized_keys:
+      - ${SSH_PUBKEY}
+
+write_files:
+  - path: /etc/netplan/60-rti.yaml
+    permissions: "0600"
+    content: |
+      network:
+        version: 2
+        ethernets:
+          rti0:
+            match:
+              macaddress: "${NODE_MAC}"
+            set-name: rti0
+            dhcp4: false
+            addresses: [${EDGE_IP}/24]
+            routes:
+              - to: default
+                via: ${NET_GATEWAY}
+            nameservers:
+              addresses: [${NET_GATEWAY}]
+  - path: /etc/default/isc-dhcp-server
+    content: |
+      INTERFACESv4="rti0"
+      INTERFACESv6=""
+  - path: /etc/dhcp/dhcpd.conf
+    encoding: b64
+    content: ${DHCPD_CONF_B64}
+  - path: /etc/rti/bff-config/connections.json
+    encoding: b64
+    content: ${CONNECTIONS_JSON_B64}
+  - path: /etc/rti/certs/ca.pem
+    encoding: b64
+    content: ${CA_PEM_B64}
+  - path: /etc/rti/certs/server.pem
+    encoding: b64
+    content: ${SERVER_PEM_B64}
+  - path: /etc/rti/certs/server-key.pem
+    permissions: "0640"
+    encoding: b64
+    content: ${SERVER_KEY_B64}
+  - path: /etc/rti/certs/client.pem
+    encoding: b64
+    content: ${CLIENT_PEM_B64}
+  - path: /etc/rti/certs/client-key.pem
+    permissions: "0640"
+    encoding: b64
+    content: ${CLIENT_KEY_B64}
+
+runcmd:
+  - netplan apply
+  - systemctl enable --now avahi-daemon
+  - systemctl enable --now isc-dhcp-server
+  - for t in /var/lib/rti/images/*.tar; do docker load -i "$t"; done
+  - docker compose -f /etc/rti/compose.yaml up -d

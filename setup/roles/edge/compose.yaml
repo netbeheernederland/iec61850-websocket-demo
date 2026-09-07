@@ -1,0 +1,45 @@
+# rti-edge: HMI + BFF on one machine.
+# Split out of the root docker-compose.yml. Peers (SO, FSPs) are reached over
+# mDNS by <hostname>.local, listed in connections.json. Containers use host
+# networking so published ports land on the VM's own IP.
+name: rti-edge
+
+services:
+  bff-server:
+    image: rti-demo_bff-server:latest
+    container_name: bff-server
+    network_mode: host
+    environment:
+      # cross-host docker discovery is impossible here - rely on the static file
+      RTI_DOCKER_ENABLED: "false"
+      RTI_SERVICE_DISCOVERY_ENABLED: "false"
+      PORT: "3000"
+      LOG_LEVEL: debug
+      BFF_CONNECTIONS_FILE: /config/connections.json
+    volumes:
+      - /etc/rti/bff-config:/config
+      - /etc/rti/certs:/certs:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 30s
+      retries: 5
+      start_period: 30s
+
+  rti-hmi:
+    image: rti-demo_rti-hmi:latest
+    container_name: rti-hmi
+    network_mode: host
+    depends_on:
+      bff-server:
+        condition: service_healthy
+    volumes:
+      - /etc/rti/certs:/certs:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
