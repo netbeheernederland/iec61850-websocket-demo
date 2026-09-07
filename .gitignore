@@ -3,3 +3,6 @@
 *.key
 *.crt
 *.json.bak
+
+# JetBrains IDE
+.idea/
