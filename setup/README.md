@@ -46,6 +46,7 @@ setup/
   destroy.sh         # virsh destroy/undefine the fleet
   up.sh              # render -> make-disks -> launch
   libvirt/rti-demo-net.xml
+  certs/             # cfssl config (ca/server/client CSR + profiles); shared with ../docker-compose.yml
   roles/<role>/{compose.yaml[.tmpl], cloud-init.yaml.tmpl}   # self-contained
   roles/fsp/models/  # *.py copied to every fsp node (seeded from ../modules/fsp01/models/)
   images/  build/    # generated, git-ignored

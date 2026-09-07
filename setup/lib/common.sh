@@ -6,7 +6,7 @@ SETUP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 export SETUP_DIR
 IMAGES_DIR="${SETUP_DIR}/images"
 BUILD_DIR="${SETUP_DIR}/build"
-CERTS_SRC="${SETUP_DIR}/../certs"
+CERTS_SRC="${SETUP_DIR}/certs"
 
 if [[ -t 1 ]]; then c_g=$'\e[32m'; c_y=$'\e[33m'; c_r=$'\e[31m'; c_0=$'\e[0m'
 else c_g=; c_y=; c_r=; c_0=; fi

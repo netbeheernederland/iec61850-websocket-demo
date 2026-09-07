@@ -17,9 +17,12 @@ The generated `*.pem` / `*.csr` files are **not** committed (see `.gitignore`).
 
 ### With Docker (recommended)
 
-The `cert-generator` service in `docker-compose.yml` installs `cfssl`, runs the
-same steps as `generate.sh`, and writes the results into the shared `certs`
+The `cert-generator` service in `../docker-compose.yml` installs `cfssl`, runs
+the same steps as `generate.sh`, and writes the results into the shared `certs`
 volume. Every other service mounts that volume read-only at `/certs`.
+
+For the per-VM `setup/` workflow, `../render.sh` reuses these same cfssl config
+files (via `CERTS_SRC`) to mint the fleet's certificates.
 
 ```bash
 docker compose up cert-generator      # one-off

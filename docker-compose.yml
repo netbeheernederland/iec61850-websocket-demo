@@ -1,7 +1,7 @@
 services:
   # Certificate generator
   # Installs cfssl, builds the CA + server/client certificates from the cfssl
-  # config files in ./certs, and writes the results into the shared "certs"
+  # config files in ./setup/certs, and writes the results into the shared "certs"
   # volume. Every other service mounts that volume read-only at /certs.
   # It is idempotent: if the volume already holds certificates it exits 0
   # immediately, so it is safe to leave in the dependency graph.
@@ -14,7 +14,7 @@ services:
       SERVER_HOSTNAMES: ${SERVER_HOSTNAMES:-localhost,127.0.0.1,rti-hmi,bff-server,rti-fsp01,rti-fsp02,rti-so}
       CFSSL_VERSION: "1.6.5"
     volumes:
-      - ./certs:/config:ro
+      - ./setup/certs:/config:ro
       - certs:/out
     working_dir: /out
     command:
