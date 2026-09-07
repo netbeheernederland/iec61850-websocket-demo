@@ -44,7 +44,7 @@ setup/
   make-disks.sh      # per node: qcow2 overlay + virt-customize copy-in + seed ISO
   launch.sh          # define libvirt net; virt-install edge first, then the rest
   destroy.sh         # virsh destroy/undefine the fleet
-  up.sh              # render -> make-disks -> launch
+  up.sh              # render (+certs) -> make-disks -> launch
   libvirt/rti-demo-net.xml
   certs/             # cfssl config (ca/server/client CSR + profiles); shared with ../docker-compose.yml
   roles/<role>/{compose.yaml[.tmpl], cloud-init.yaml.tmpl}   # self-contained
@@ -71,12 +71,22 @@ docker compose -f ../docker-compose.yml build    # if the rti-demo_* images aren
 ./build-tarballs.sh           # docker save them
 
 # each time you change nodes.env / templates
-./up.sh                       # == ./render.sh && ./make-disks.sh && ./launch.sh
+./render.sh                   # 1. mint certs (from certs/) + expand templates -> build/<node>/
+./make-disks.sh               # 2. per-node qcow2 overlay + seed ISO
+./launch.sh                   # 3. define libvirt net + virt-install (edge first)
+# ...or just ./up.sh to run all three
 
 virsh list --all
 virsh console rti-edge        # watch first boot
 ssh rti@192.168.150.2 'sudo cloud-init status --wait && docker ps'
 ```
+
+`render.sh` is where the fleet's TLS material is generated: on the first run
+(and whenever the node list — hence the SAN set — changes) it runs
+containerised `cfssl` against the CSR/profile config in `certs/` and writes
+`build/certs/{ca,server,client}*.pem`, which the templates then embed in each
+node's cloud-init. There is no separate cert step. Host-side `certs/generate.sh`
+remains available if you prefer to mint them with a local `cfssl`.
 
 Tear down with `./destroy.sh` (add `--keep-network` to leave `rti-demo-net`).
 
