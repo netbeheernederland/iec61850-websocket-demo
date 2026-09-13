@@ -82,7 +82,7 @@ docker buildx inspect --bootstrap >/dev/null
 build_arch() {
   local dockerfile="$1" context="$2" platform="$3" tag="$4"
   echo "Building ${tag} for ${platform}..."
-  docker buildx build --builder "${BUILDX_BUILDER}" --platform "${platform}" \
+  docker buildx build --platform "${platform}" \
     -f "${dockerfile}" -t "${tag}" --load "${context}"
 }
 
