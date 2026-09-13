@@ -28,22 +28,32 @@ LOAD_AND_START_SCRIPT="${SCRIPT_DIR}/load-and-start.sh"
 MACHINE_SO_DEST="pi@192.168.100.97:rti-demo"       # role: so    -- receives: so, io, docker-compose.yml
 MACHINE_FSP01_DEST="pi@192.168.100.98:rti-demo"    # role: fsp01 -- receives: fsp, io, docker-compose.yml
 
-# --- Work in an isolated temp directory --------------------------------
-WORKDIR="$(mktemp -d -t rti-demo-XXXXXX)"
-echo "Using temporary directory: ${WORKDIR}"
+# Persistent clone, reused across runs instead of re-cloning every time
+CLONE_DIR="${CLONE_DIR:-${TMPDIR:-/tmp}/iec61850-websocket-clone}"
+
+# --- Export directory (ephemeral) ---------------------------------------
+EXPORT_DIR="$(mktemp -d -t rti-demo-exports-XXXXXX)"
+echo "Using export directory: ${EXPORT_DIR}"
 
 cleanup() {
-  echo "Cleaning up ${WORKDIR}"
-  rm -rf "${WORKDIR}"
+  echo "Cleaning up ${EXPORT_DIR}"
+  rm -rf "${EXPORT_DIR}"
 }
 trap cleanup EXIT
 
-# --- Clone and checkout --------------------------------------------------
-git clone "${REPO_URL}" "${WORKDIR}/iec61850-websocket"
-cd "${WORKDIR}/iec61850-websocket"
-git checkout "${BRANCH}"
+# --- Clone (first run) or update (subsequent runs) -----------------------
+if [ -d "${CLONE_DIR}/.git" ]; then
+  echo "Reusing existing clone at ${CLONE_DIR}, updating..."
+  git -C "${CLONE_DIR}" fetch origin "${BRANCH}"
+  git -C "${CLONE_DIR}" checkout "${BRANCH}"
+  git -C "${CLONE_DIR}" reset --hard "origin/${BRANCH}"
+else
+  echo "No existing clone found, cloning into ${CLONE_DIR}..."
+  git clone "${REPO_URL}" "${CLONE_DIR}"
+  git -C "${CLONE_DIR}" checkout "${BRANCH}"
+fi
 
-cd "${EXAMPLE_SUBDIR}"
+cd "${CLONE_DIR}/${EXAMPLE_SUBDIR}"
 
 # --- Build images ---------------------------------------------------------
 docker compose build
@@ -54,9 +64,6 @@ docker tag "${IMAGE_SO}" "${IMAGE_SO_TAGGED}"
 docker tag "${IMAGE_IO}" "${IMAGE_IO_TAGGED}"
 
 # --- Export images to tar.gz ----------------------------------------------
-EXPORT_DIR="${WORKDIR}/exports"
-mkdir -p "${EXPORT_DIR}"
-
 FSP_TAR="${EXPORT_DIR}/${IMAGE_FSP}.tar.gz"
 SO_TAR="${EXPORT_DIR}/${IMAGE_SO}.tar.gz"
 IO_TAR="${EXPORT_DIR}/${IMAGE_IO}.tar.gz"
