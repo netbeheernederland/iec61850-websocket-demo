@@ -8,7 +8,7 @@ services:
       - PORT=5001
       - CP=cp1
 #       - MODELPATH=/models/model.py
-      - DEMO_IO_URL=http://demo_io:8000
+      - DEMO_IO_URL=http://rti_fsp_io:8000
     networks:
       - rti-network
     healthcheck:
@@ -27,8 +27,8 @@ services:
 #       - ../../../examples/rti-demo/models:/models
 #       - ../../../examples/rti-demo/demo_IO:/app/demo_IO
 
-  demo_io:
-    container_name: demo_io_fsp
+  rti_fsp_io:
+    container_name: rti_fsp_io
     image: netbeheer-nederland/iec61850-websocket/rti-io:latest
     ports:
       - "8000:8000"
@@ -61,9 +61,7 @@ services:
       - "rti.type=GPIO-LED-Control"
       - "rti.host=demo_io_fsp"
       - "rti.port=8000"
-#     volumes:
-#       - ../demo_IO:/app/demo_IO
-    command: ["./.venv/bin/python", "-u", "demo_IO/io_api_server/main.py"]
+    command: ["python", "-u", "demo_IO/main.py"]
 
 networks:
   rti-network:

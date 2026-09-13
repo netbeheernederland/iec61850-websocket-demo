@@ -7,7 +7,7 @@ services:
       - "8765:8765"
     environment:
       - PORT=5002
-      - DEMO_IO_URL=http://demo_io:8000
+      - DEMO_IO_URL=http://rti-so-io:8000
     networks:
       - rti-network
     healthcheck:
@@ -21,13 +21,10 @@ services:
       - "rti.type=RTI-SO"
       - "rti.host=rti-so"
       - "rti.port=5002"
-#     volumes:
-#       - ../../../examples/rti-demo/so:/app/so
-#       - ../../../examples/rti-demo/demo_IO:/app/demo_IO
 
-  demo_io:
+  rti-so-io:
     image: netbeheer-nederland/iec61850-websocket/rti-io:latest
-    container_name: demo_io_so
+    container_name: rti-so-io
     ports:
       - "8000:8000"
     environment:
@@ -58,9 +55,7 @@ services:
       - "rti.type=GPIO-LED-Control"
       - "rti.host=demo_io_so"
       - "rti.port=8000"
-#     volumes:
-#       - ../demo_IO:/app/demo_IO
-    command: ["./.venv/bin/python", "-u", "demo_IO/io_api_server/main.py"]
+    command: ["python", "-u", "demo_IO/main.py"]
 
 networks:
   rti-network:
