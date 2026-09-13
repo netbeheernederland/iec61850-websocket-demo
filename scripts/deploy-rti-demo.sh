@@ -18,6 +18,15 @@ IMAGE_FSP_TAGGED="${IMAGE_BASE}/rti-fsp"
 IMAGE_SO_TAGGED="${IMAGE_BASE}/rti-so"
 IMAGE_IO_TAGGED="${IMAGE_BASE}/rti-io"
 
+# Build dockerfiles/contexts as declared in examples/rti-demo/docker-compose.yml
+FSP_DOCKERFILE="${EXAMPLE_SUBDIR}/Dockerfile.rti-fsp"
+SO_DOCKERFILE="${EXAMPLE_SUBDIR}/Dockerfile.rti-so"
+IO_DOCKERFILE="Dockerfile.IO"
+
+PLATFORM_AMD64="linux/amd64"
+PLATFORM_ARM64V8="linux/arm64/v8"
+BUILDX_BUILDER="rti-demo-builder"
+
 # Role modules (local to this repo), providing each machine's docker-compose.yml
 SO_MODULE_COMPOSE="${REPO_ROOT}/modules/so/docker-compose.yml"
 FSP01_MODULE_COMPOSE="${REPO_ROOT}/modules/fsp01/docker-compose.yml"
@@ -55,26 +64,49 @@ fi
 
 cd "${CLONE_DIR}/${EXAMPLE_SUBDIR}"
 
-# --- Build images ---------------------------------------------------------
-docker compose build
+# --- Set up a buildx builder capable of multi-arch builds ------------------
+if ! docker buildx inspect "${BUILDX_BUILDER}" >/dev/null 2>&1; then
+  echo "Creating buildx builder ${BUILDX_BUILDER}..."
+  docker buildx create --name "${BUILDX_BUILDER}" --driver docker-container
+fi
+docker buildx use "${BUILDX_BUILDER}"
+docker buildx inspect --bootstrap >/dev/null
 
-# --- Tag images with the netbeheer-nederland base name --------------------
-docker tag "${IMAGE_FSP}" "${IMAGE_FSP_TAGGED}"
-docker tag "${IMAGE_SO}" "${IMAGE_SO_TAGGED}"
-docker tag "${IMAGE_IO}" "${IMAGE_IO_TAGGED}"
+# --- Build amd64 and arm64/v8 images for fsp, so and io --------------------
+build_arch() {
+  local dockerfile="$1" context="$2" platform="$3" tag="$4"
+  echo "Building ${tag} for ${platform}..."
+  docker buildx build --builder "${BUILDX_BUILDER}" --platform "${platform}" \
+    -f "${dockerfile}" -t "${tag}" --load "${context}"
+}
 
-# --- Export images to tar.gz ----------------------------------------------
+# amd64
+build_arch "${FSP_DOCKERFILE}" "${CLONE_DIR}" "${PLATFORM_AMD64}" "${IMAGE_FSP}:amd64"
+build_arch "${SO_DOCKERFILE}" "${CLONE_DIR}" "${PLATFORM_AMD64}" "${IMAGE_SO}:amd64"
+build_arch "${IO_DOCKERFILE}" "." "${PLATFORM_AMD64}" "${IMAGE_IO}:amd64"
+
+# arm64/v8
+build_arch "${FSP_DOCKERFILE}" "${CLONE_DIR}" "${PLATFORM_ARM64V8}" "${IMAGE_FSP}:arm64v8"
+build_arch "${SO_DOCKERFILE}" "${CLONE_DIR}" "${PLATFORM_ARM64V8}" "${IMAGE_SO}:arm64v8"
+build_arch "${IO_DOCKERFILE}" "." "${PLATFORM_ARM64V8}" "${IMAGE_IO}:arm64v8"
+
+# --- Tag the arm64/v8 images with the netbeheer-nederland base name --------
+docker tag "${IMAGE_FSP}:arm64v8" "${IMAGE_FSP_TAGGED}"
+docker tag "${IMAGE_SO}:arm64v8" "${IMAGE_SO_TAGGED}"
+docker tag "${IMAGE_IO}:arm64v8" "${IMAGE_IO_TAGGED}"
+
+# --- Export arm64/v8 images to tar.gz (only arch that ships to the pis) ----
 FSP_TAR="${EXPORT_DIR}/${IMAGE_FSP}.tar.gz"
 SO_TAR="${EXPORT_DIR}/${IMAGE_SO}.tar.gz"
 IO_TAR="${EXPORT_DIR}/${IMAGE_IO}.tar.gz"
 
-echo "Exporting ${IMAGE_FSP_TAGGED}..."
+echo "Exporting ${IMAGE_FSP_TAGGED} (arm64/v8)..."
 docker save "${IMAGE_FSP_TAGGED}" | gzip > "${FSP_TAR}"
 
-echo "Exporting ${IMAGE_SO_TAGGED}..."
+echo "Exporting ${IMAGE_SO_TAGGED} (arm64/v8)..."
 docker save "${IMAGE_SO_TAGGED}" | gzip > "${SO_TAR}"
 
-echo "Exporting ${IMAGE_IO_TAGGED}..."
+echo "Exporting ${IMAGE_IO_TAGGED} (arm64/v8)..."
 docker save "${IMAGE_IO_TAGGED}" | gzip > "${IO_TAR}"
 
 # --- Copy images, role compose file and load-and-start script to target machines ------------------
