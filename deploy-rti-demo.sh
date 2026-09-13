@@ -10,8 +10,8 @@ IMAGE_FSP="rti-demo-rti-fsp"
 IMAGE_SO="rti-demo-rti-so"
 IMAGE_IO="rti-demo-rti-io"
 
-MACHINE1_DEST="pi@192.168.100.97:pi"       # receives: so, io
-MACHINE2_DEST="pi2@192.168.100.98:/pi"     # receives: fsp, io
+MACHINE1_DEST="pi@192.168.100.97:rti-demo"       # receives: so, io
+MACHINE2_DEST="pi@192.168.100.98:rti-demo"     # receives: fsp, io
 
 # --- Work in an isolated temp directory --------------------------------
 WORKDIR="$(mktemp -d -t rti-demo-XXXXXX)"
