@@ -64,6 +64,12 @@ fi
 
 cd "${CLONE_DIR}/${EXAMPLE_SUBDIR}"
 
+# --- Register QEMU emulation for cross-arch builds (idempotent) ------------
+if [ ! -e /proc/sys/fs/binfmt_misc/qemu-aarch64 ]; then
+  echo "Registering QEMU binfmt handlers for cross-arch builds..."
+  docker run --privileged --rm tonistiigi/binfmt --install arm64
+fi
+
 # --- Set up a buildx builder capable of multi-arch builds ------------------
 if ! docker buildx inspect "${BUILDX_BUILDER}" >/dev/null 2>&1; then
   echo "Creating buildx builder ${BUILDX_BUILDER}..."
