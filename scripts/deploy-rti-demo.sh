@@ -19,9 +19,11 @@ IMAGE_SO_TAGGED="${IMAGE_BASE}/rti-so"
 IMAGE_IO_TAGGED="${IMAGE_BASE}/rti-io"
 
 # Build dockerfiles/contexts as declared in examples/rti-demo/docker-compose.yml
-FSP_DOCKERFILE="${EXAMPLE_SUBDIR}/Dockerfile.rti-fsp"
-SO_DOCKERFILE="${EXAMPLE_SUBDIR}/Dockerfile.rti-so"
-IO_DOCKERFILE="Dockerfile.IO"
+# (paths are made absolute below, once CLONE_DIR is known: -f is resolved
+# relative to the shell's cwd, not the build context, by docker buildx build)
+FSP_DOCKERFILE_REL="${EXAMPLE_SUBDIR}/Dockerfile.rti-fsp"
+SO_DOCKERFILE_REL="${EXAMPLE_SUBDIR}/Dockerfile.rti-so"
+IO_DOCKERFILE_REL="${EXAMPLE_SUBDIR}/Dockerfile.IO"
 
 PLATFORM_AMD64="linux/amd64"
 PLATFORM_ARM64V8="linux/arm64/v8"
@@ -62,6 +64,10 @@ else
   git -C "${CLONE_DIR}" checkout "${BRANCH}"
 fi
 
+FSP_DOCKERFILE="${CLONE_DIR}/${FSP_DOCKERFILE_REL}"
+SO_DOCKERFILE="${CLONE_DIR}/${SO_DOCKERFILE_REL}"
+IO_DOCKERFILE="${CLONE_DIR}/${IO_DOCKERFILE_REL}"
+
 cd "${CLONE_DIR}/${EXAMPLE_SUBDIR}"
 
 # --- Register QEMU emulation for cross-arch builds (idempotent) ------------
@@ -86,15 +92,17 @@ build_arch() {
     -f "${dockerfile}" -t "${tag}" --load "${context}"
 }
 
+IO_CONTEXT="${CLONE_DIR}/${EXAMPLE_SUBDIR}"
+
 # amd64
 build_arch "${FSP_DOCKERFILE}" "${CLONE_DIR}" "${PLATFORM_AMD64}" "${IMAGE_FSP}:amd64"
 build_arch "${SO_DOCKERFILE}" "${CLONE_DIR}" "${PLATFORM_AMD64}" "${IMAGE_SO}:amd64"
-build_arch "${IO_DOCKERFILE}" "." "${PLATFORM_AMD64}" "${IMAGE_IO}:amd64"
+build_arch "${IO_DOCKERFILE}" "${IO_CONTEXT}" "${PLATFORM_AMD64}" "${IMAGE_IO}:amd64"
 
 # arm64/v8
 build_arch "${FSP_DOCKERFILE}" "${CLONE_DIR}" "${PLATFORM_ARM64V8}" "${IMAGE_FSP}:arm64v8"
 build_arch "${SO_DOCKERFILE}" "${CLONE_DIR}" "${PLATFORM_ARM64V8}" "${IMAGE_SO}:arm64v8"
-build_arch "${IO_DOCKERFILE}" "." "${PLATFORM_ARM64V8}" "${IMAGE_IO}:arm64v8"
+build_arch "${IO_DOCKERFILE}" "${IO_CONTEXT}" "${PLATFORM_ARM64V8}" "${IMAGE_IO}:arm64v8"
 
 # --- Tag the arm64/v8 images with the netbeheer-nederland base name --------
 docker tag "${IMAGE_FSP}:arm64v8" "${IMAGE_FSP_TAGGED}"
