@@ -8,7 +8,7 @@
 
 `docker-compose.yml` currently hand-lists each RTI-FSP / RTI-SO service as a
 full copy-pasted block (`rti-fsp01`, `rti-fsp02`, `rti-so`), each with its own
-port mapping, `CP`, optional `MODELPATH`, healthcheck, and labels.
+port mapping, `CP`, optional `MODELPATH`, health check, and labels.
 `modules/bff/config/connections.json` and the `cert-generator` service's
 `SERVER_HOSTNAMES` env var must be kept in sync with that same list by hand.
 
@@ -30,7 +30,7 @@ is not required to share the generator).
 - Supporting node counts beyond "tens" (the ceiling that motivated this;
   hundreds of nodes would need a different node-list format, e.g. generated
   from a count rather than hand-written lines — not addressed here).
-- Changing the BFF/HMI/websocket protocol surface, or `bff-server` /
+- Changing the BFF/HMI/websocket protocol surface, or `rti-bff` /
   `rti-hmi` themselves (they remain hand-maintained, fixed services).
 - Runtime dynamic node registration — nodes are still declared statically,
   just generated instead of hand-copied.
@@ -40,7 +40,7 @@ is not required to share the generator).
 ### Inputs: `scripts/compose-nodes.env`
 
 A new file, same shape as `setup/nodes.env`, listing only `so` and `fsp`
-role nodes (root compose has no `edge` VM role — `bff-server` and `rti-hmi`
+role nodes (root compose has no `edge` VM role — `rti-bff` and `rti-hmi`
 are not generated):
 
 ```
@@ -65,7 +65,7 @@ Each line: `<container-name> <role> <key=value ...>`. Recognized extras:
    templates (one per role) inside the script — mirroring how
    `render.sh` builds `connections.json` inline rather than from a
    Jinja template. Everything outside the sentinels (`cert-generator`,
-   `rti-hmi`, `bff-server`, `volumes:`, `networks:`) is untouched.
+   `rti-hmi`, `rti-bff`, `volumes:`, `networks:`) is untouched.
 2. **`modules/bff/config/connections.json`** — fully regenerated from the
    same node list, replacing today's hand-maintained file. Field mapping
    matches the existing schema (`id`, `name`, `host`, `port`, `type`,

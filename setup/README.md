@@ -12,7 +12,7 @@ pairs with `../modules/bff`, `roles/fsp` with `../modules/fsp01`. The BFF
 
 | role   | node(s)                | containers                | notes |
 | ------ | ---------------------- | ------------------------- | ----- |
-| `edge` | `rti-edge`             | `bff-server`, `rti-hmi`   | also runs the fleet's **dhcpd** + **mDNS**; static IP `192.168.150.2` |
+| `edge` | `rti-edge`             | `rti-bff`, `rti-hmi`   | also runs the fleet's **dhcpd** + **mDNS**; static IP `192.168.150.2` |
 | `so`   | `rti-so`               | `rti-so`                  | DHCP reservation `.11` |
 | `fsp`  | `rti-fsp01`, `rti-fsp02`, … | `rti-fsp` (1 per node) | templated; add machines by editing `nodes.env` |
 

@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# Retags the already-built bff-server and rti-hmi images under the
+# Retags the already-built rti-bff and rti-hmi images under the
 # netbeheer-nederland/iec61850-websocket base name.
 set -euo pipefail
 
 IMAGE_BASE="netbeheer-nederland/iec61850-websocket"
 
-IMAGE_BFF="rti-demo-bff-server"
+IMAGE_BFF="rti-demo-rti-bff"
 IMAGE_HMI="rti-demo-rti-hmi"
 
-IMAGE_BFF_TAGGED="${IMAGE_BASE}/bff-server"
+IMAGE_BFF_TAGGED="${IMAGE_BASE}/rti-bff"
 IMAGE_HMI_TAGGED="${IMAGE_BASE}/rti-hmi"
 
 echo "Tagging ${IMAGE_BFF} as ${IMAGE_BFF_TAGGED}..."

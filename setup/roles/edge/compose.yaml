@@ -5,9 +5,9 @@
 name: rti-edge
 
 services:
-  bff-server:
-    image: rti-demo_bff-server:latest
-    container_name: bff-server
+  rti-bff:
+    image: rti-demo_rti-bff:latest
+    container_name: rti-bff
     network_mode: host
     environment:
       # cross-host docker discovery is impossible here - rely on the static file
@@ -32,7 +32,7 @@ services:
     container_name: rti-hmi
     network_mode: host
     depends_on:
-      bff-server:
+      rti-bff:
         condition: service_healthy
     volumes:
       - /etc/rti/certs:/certs:ro

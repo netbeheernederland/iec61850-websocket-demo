@@ -11,7 +11,7 @@ services:
     environment:
       # Comma-separated SANs baked into the server & client certificates.
       # Override from the host env (SERVER_HOSTNAMES=...) if you add services.
-      SERVER_HOSTNAMES: ${SERVER_HOSTNAMES:-localhost,127.0.0.1,rti-hmi,bff-server,rti-fsp01,rti-fsp02,rti-so}
+      SERVER_HOSTNAMES: ${SERVER_HOSTNAMES:-localhost,127.0.0.1,rti-hmi,rti-bff,rti-fsp01,rti-fsp02,rti-so}
       CFSSL_VERSION: "1.6.5"
     volumes:
       - ./setup/certs:/config:ro
@@ -64,7 +64,7 @@ services:
     ports:
       - "80:80"
     depends_on:
-      bff-server:
+      rti-bff:
         condition: service_healthy
       cert-generator:
         condition: service_completed_successfully
@@ -80,9 +80,9 @@ services:
       start_period: 10s
 
   # BFF Server
-  bff-server:
-    image: netbeheer-nederland/iec61850-websocket/bff-server:latest
-    container_name: bff-server
+  rti-bff:
+    image: netbeheer-nederland/iec61850-websocket/rti-bff:latest
+    container_name: rti-bff
     ports:
       - "3000:3000"
     depends_on:
@@ -107,9 +107,9 @@ services:
       retries: 5
       start_period: 30s
     labels:
-      - "rti.service=bff-server"
+      - "rti.service=rti-bff"
       - "rti.type=RTI-BFF"
-      - "rti.host=bff-server"
+      - "rti.host=rti-bff"
       - "rti.port=3000"
 
   # RTI-FSP (Acsi-Server)

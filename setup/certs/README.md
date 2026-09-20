@@ -41,7 +41,7 @@ docker compose up cert-generator
 Add or change SANs via the `SERVER_HOSTNAMES` env var:
 
 ```bash
-SERVER_HOSTNAMES=localhost,127.0.0.1,rti-hmi,bff-server,extra-host docker compose up cert-generator
+SERVER_HOSTNAMES=localhost,127.0.0.1,rti-hmi,rti-bff,extra-host docker compose up cert-generator
 ```
 
 ### On the host
