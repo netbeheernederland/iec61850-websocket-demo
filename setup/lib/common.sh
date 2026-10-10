@@ -60,13 +60,26 @@ load_config() {
   source "${SETUP_DIR}/roles.env"
   # shellcheck disable=SC1091
   source "${SETUP_DIR}/nodes.env"
+  local k
   if [[ -z "${SSH_PUBKEY:-}" ]]; then
-    local k
     for k in "${HOME}/.ssh/id_ed25519.pub" "${HOME}/.ssh/id_rsa.pub"; do
+      [[ -f "$k" ]] && { SSH_PUBKEY="$(<"$k")"; break; }
+    done
+  else
+    # Also accept a key file: a path, or a file name under ~/.ssh.
+    for k in "$SSH_PUBKEY" "${HOME}/.ssh/${SSH_PUBKEY}"; do
       [[ -f "$k" ]] && { SSH_PUBKEY="$(<"$k")"; break; }
     done
   fi
   export SSH_PUBKEY
+}
+
+# Die unless SSH_PUBKEY holds an OpenSSH public key line.
+check_ssh_pubkey() {
+  [[ -n "${SSH_PUBKEY:-}" ]] \
+    || die "no SSH_PUBKEY: put a key at ~/.ssh/id_ed25519.pub or export SSH_PUBKEY=<key or .pub file>"
+  [[ "$SSH_PUBKEY" =~ ^(ssh-(rsa|ed25519|dss)|ecdsa-sha2-[a-z0-9]+|sk-[a-z0-9@.-]+)\ [A-Za-z0-9+/=]+ ]] \
+    || die "SSH_PUBKEY is not a public key or a readable .pub file: ${SSH_PUBKEY}"
 }
 
 # Deterministic locally-administered MAC from a node name: 52:54:00:xx:xx:xx

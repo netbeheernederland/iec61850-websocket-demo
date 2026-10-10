@@ -9,7 +9,7 @@ source "$(dirname "$0")/lib/common.sh"
 load_config
 need envsubst; need base64; need docker; need md5sum
 
-[[ -n "${SSH_PUBKEY:-}" ]] || die "no SSH_PUBKEY: put a key at ~/.ssh/id_ed25519.pub or export SSH_PUBKEY=..."
+check_ssh_pubkey
 mkdir -p "$BUILD_DIR"
 
 ###########################################################################

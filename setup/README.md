@@ -50,6 +50,7 @@ setup/
   build-tarballs.sh  # docker save rti-* -> images/*.tar
   render.sh          # certs + templates -> build/<node>/{user-data,meta-data,spec,compose.yaml}
   make-disks.sh      # per node: expanded standalone qcow2 + copy-in + seed ISO
+  pi-user-data.sh    # rti login + hostname into a Pi image's cloud-init
   launch.sh          # define libvirt net; virt-install edge first, then the rest
   destroy.sh         # virsh destroy/undefine the fleet
   up.sh              # render (+certs) -> make-disks -> launch
@@ -111,7 +112,8 @@ image's permissions. You may need to repeat it after a host kernel update.
 `virt-resize`, `guestfish`),
 `cloud-image-utils` (`cloud-localds`) or `genisoimage`, `docker`, `curl`,
 `gettext-base` (`envsubst`). An SSH public key at `~/.ssh/id_ed25519.pub`
-(or `id_rsa.pub`, or `export SSH_PUBKEY=...`).
+(or `id_rsa.pub`), or `export SSH_PUBKEY=...` with the key itself, a `.pub`
+file path, or a file name under `~/.ssh`.
 
 ## Run
 
@@ -195,8 +197,22 @@ How the image is customised depends on the host:
 On both paths `flash-kernel` is rerun after the upgrade, so any newer
 kernel and initrd are copied to the boot partition.
 
-These commands bake the base OS and packages. Configure each Pi's cloud-init
-on its boot partition and provide ARM64 container images before deployment.
+These commands bake the base OS and packages. The boot partition still has
+Ubuntu's stock cloud-init, whose only user is `ubuntu`, with password SSH
+login disabled, so add a login before flashing:
+
+```bash
+./pi-user-data.sh --rpi 5 --hostname rti-pi5   # writes into images/base-rti-rpi5.img
+```
+
+This writes `user-data` creating `rti` (sudo, docker) with `SSH_PUBKEY` and the
+hostname, without root (needs `mtools`). For a card that is already flashed, mount its
+`system-boot` partition and pass `--boot-dir <mountpoint>` instead; the script
+also changes the meta-data instance id so cloud-init applies it on the next
+boot. The Pi takes its address by DHCP on `eth0`; it then answers as
+`<hostname>.local`.
+
+Provide ARM64 container images before deployment.
 `make-disks.sh`, `launch.sh` and `up.sh` remain the KVM VM workflow; they do
 not provision or boot physical Raspberry Pis. Without arguments, downloading
 and building still produce the original amd64 VM base.
