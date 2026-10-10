@@ -49,7 +49,7 @@ setup/
   build-base.sh      # -> images/base-rti.qcow2 (docker, avahi, dhcpd baked in)
   build-tarballs.sh  # docker save rti-* -> images/*.tar
   render.sh          # certs + templates -> build/<node>/{user-data,meta-data,spec,compose.yaml}
-  make-disks.sh      # per node: qcow2 overlay + virt-customize copy-in + seed ISO
+  make-disks.sh      # per node: expanded standalone qcow2 + copy-in + seed ISO
   launch.sh          # define libvirt net; virt-install edge first, then the rest
   destroy.sh         # virsh destroy/undefine the fleet
   up.sh              # render (+certs) -> make-disks -> launch
@@ -62,7 +62,8 @@ setup/
 
 ## Host prerequisites
 
-`qemu-kvm`, `libvirt` + `virtinst`, `libguestfs-tools` (`virt-customize`),
+`qemu-kvm`, `libvirt` + `virtinst`, `libguestfs-tools` (`virt-customize`,
+`virt-resize`, `guestfish`),
 `cloud-image-utils` (`cloud-localds`) or `genisoimage`, `docker`, `curl`,
 `gettext-base` (`envsubst`). An SSH public key at `~/.ssh/id_ed25519.pub`
 (or `id_rsa.pub`, or `export SSH_PUBKEY=...`).
@@ -80,7 +81,7 @@ docker compose -f ../docker-compose.yml build    # build repository-named images
 
 # each time you change nodes.env / templates
 ./render.sh                   # 1. mint certs (from certs/) + expand templates -> build/<node>/
-./make-disks.sh               # 2. per-node qcow2 overlay + seed ISO
+./make-disks.sh               # 2. per-node expanded qcow2 + seed ISO
 ./launch.sh                   # 3. define libvirt net + virt-install (edge first)
 # ...or just ./up.sh to run all three
 
@@ -131,3 +132,9 @@ automatically.
   other hosts' Docker. It uses the static `connections.json` only.
 * `roles.env` and `libvirt/rti-demo-net.xml` both hard-code the
   `192.168.150.0/24` range; keep them in sync if you change it.
+* `make-disks.sh` expands the root partition and filesystem to the configured
+  role disk size before copying container tarballs. Each node has a standalone
+  disk, so allow host disk space for each copy of the base OS and payload.
+  If copying still runs out of space, increase that role's disk size in
+  `roles.env`, then rerun `render.sh` and `make-disks.sh` with the fleet stopped.
+  Provision enough guest space for both the tarballs and Docker's loaded images.
