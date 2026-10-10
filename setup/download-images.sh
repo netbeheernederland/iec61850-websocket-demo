@@ -5,15 +5,17 @@
 set -euo pipefail
 source "$(dirname "$0")/lib/common.sh"
 load_config
+parse_image_target "$@"
 need curl; need sha256sum
 
 mkdir -p "$IMAGES_DIR"
-img="${IMAGES_DIR}/${UBUNTU_IMAGE}"
-sums="${IMAGES_DIR}/SHA256SUMS.${UBUNTU_RELEASE}"
+sums="${IMAGES_DIR}/SHA256SUMS.${UBUNTU_RELEASE}.${IMAGE_TARGET}"
 
 log "fetching checksum manifest"
 curl -fsSL -o "$sums" "${UBUNTU_BASE_URL}/SHA256SUMS"
-want="$(awk -v f="*${UBUNTU_IMAGE}" '$2==f {print $1}' "$sums")"
+resolve_image_name "$sums"
+img="${IMAGES_DIR}/${UBUNTU_IMAGE}"
+want="$(awk -v f="${UBUNTU_IMAGE}" '{ name=$2; sub(/^\*/, "", name); if (name==f) print $1 }' "$sums")"
 [[ -n "$want" ]] || die "no checksum for ${UBUNTU_IMAGE} in manifest"
 
 if [[ -f "$img" ]] && [[ "$(sha256sum "$img" | cut -d' ' -f1)" == "$want" ]]; then
@@ -21,7 +23,7 @@ if [[ -f "$img" ]] && [[ "$(sha256sum "$img" | cut -d' ' -f1)" == "$want" ]]; th
   exit 0
 fi
 
-log "downloading ${UBUNTU_IMAGE} (~600 MB)"
+log "downloading ${UBUNTU_IMAGE}"
 curl -fL --progress-bar -o "${img}.part" "${UBUNTU_BASE_URL}/${UBUNTU_IMAGE}"
 got="$(sha256sum "${img}.part" | cut -d' ' -f1)"
 [[ "$got" == "$want" ]] || die "checksum mismatch: got ${got} want ${want}"

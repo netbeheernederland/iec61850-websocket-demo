@@ -62,6 +62,51 @@ setup/
 
 ## Host prerequisites
 
+### Downloading and building base images on Ubuntu
+
+On Ubuntu 24.04, install the tools used by `download-images.sh` and
+`build-base.sh`:
+
+```bash
+sudo apt update
+sudo apt install qemu-utils libguestfs-tools curl ca-certificates xz-utils
+```
+
+`qemu-utils` provides `qemu-img`, `libguestfs-tools` provides
+`virt-customize`, and `xz-utils` provides `xz` for decompressing Pi images.
+The build also requires:
+
+* An x86-64 host for the default amd64 VM image. Raspberry Pi images
+  (`--rpi 3`, `--rpi 4` or `--rpi 5`) build natively with libguestfs on an
+  ARM64 host, or on an x86-64 host through `qemu-user-static` emulation
+  and `sudo` (see [Raspberry Pi base images](#raspberry-pi-3-4-and-5-base-images)).
+* Internet access and working DNS for package installation inside the image.
+* Writable space in `setup/images/`; allow roughly 10–15 GB for downloading
+  and building one target, with additional space for each retained image.
+* The source image downloaded first with `./download-images.sh`, using the
+  same `--rpi` argument as the build when selecting a Raspberry Pi model.
+
+Host Docker, an SSH public key and the libvirt fleet tools are required for
+later setup stages; they are not prerequisites for `build-base.sh` itself.
+
+Ubuntu can install `/boot/vmlinuz-*` with permissions that prevent your user
+from reading them. Libguestfs needs a readable host kernel to build its
+temporary appliance. If supermin fails with
+`cp: cannot open '/boot/vmlinuz-…' for reading: Permission denied`, apply
+the [libguestfs Ubuntu workaround](https://libguestfs.org/guestfs-faq.1.html)
+and rerun the build as your normal user:
+
+```bash
+sudo chmod 0644 /boot/vmlinuz*
+./build-base.sh               # or ./build-base.sh --rpi 3|4|5
+```
+
+This makes the host kernel images readable; it does not change the guest
+image's permissions. You may need to repeat it after a host kernel update.
+`build-base.sh` checks for unreadable host kernels before replacing its output.
+
+### Full VM fleet workflow
+
 `qemu-kvm`, `libvirt` + `virtinst`, `libguestfs-tools` (`virt-customize`,
 `virt-resize`, `guestfish`),
 `cloud-image-utils` (`cloud-localds`) or `genisoimage`, `docker`, `curl`,
@@ -108,6 +153,53 @@ containerised `cfssl` against the CSR/profile config in `certs/` and writes
 `build/certs/{ca,server,client}*.pem`, which the templates then embed in each
 node's cloud-init. There is no separate cert step. Host-side `certs/generate.sh`
 remains available if you prefer to mint them with a local `cfssl`.
+
+### Raspberry Pi 3, 4 and 5 base images
+
+Select a model with the same argument when downloading and building:
+
+```bash
+./download-images.sh --rpi 3
+./build-base.sh --rpi 3        # images/base-rti-rpi3.img
+./download-images.sh --rpi 4
+./build-base.sh --rpi 4        # images/base-rti-rpi4.img
+./download-images.sh --rpi 5
+./build-base.sh --rpi 5        # images/base-rti-rpi5.img
+```
+
+All three use Ubuntu's shared preinstalled ARM64 Raspberry Pi server image;
+the downloader resolves the current 24.04 point release from `SHA256SUMS`
+and verifies the compressed download. Building also needs `xz`. The output
+is a standalone raw disk image, including Pi boot firmware, suitable for
+flashing to an SD card or USB disk. Pi 3 means the 64-bit-capable 3B/3B+.
+
+How the image is customised depends on the host:
+
+* **ARM64 host:** `virt-customize` runs the package install natively, as for
+  the VM image.
+* **x86-64 host:** the script loop-mounts the image with `sudo`, chroots
+  into it and lets the kernel run ARM64 binaries through qemu-user. Install
+  the emulator and the partitioning tools once:
+
+  ```bash
+  sudo apt install qemu-user-static parted e2fsprogs
+  ```
+
+  The script checks that `qemu-aarch64` is registered with binfmt_misc
+  (with the `F` flag) before it starts. Emulation is slow: expect 20 minutes
+  or more for the upgrade and Docker install. The image's root partition
+  is grown by 2 GB first (`RPI_IMAGE_GROW=…` to change), and cloud-init
+  still expands it to the full card on first boot. If the build is
+  interrupted, the script unmounts the image and detaches the loop device.
+
+On both paths `flash-kernel` is rerun after the upgrade, so any newer
+kernel and initrd are copied to the boot partition.
+
+These commands bake the base OS and packages. Configure each Pi's cloud-init
+on its boot partition and provide ARM64 container images before deployment.
+`make-disks.sh`, `launch.sh` and `up.sh` remain the KVM VM workflow; they do
+not provision or boot physical Raspberry Pis. Without arguments, downloading
+and building still produce the original amd64 VM base.
 
 Tear down with `./destroy.sh` (add `--keep-network` to leave `rti-demo-net`).
 

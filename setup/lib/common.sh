@@ -15,6 +15,46 @@ warn() { printf '%s!!%s  %s\n' "$c_y" "$c_0" "$*" >&2; }
 die()  { printf '%sxx%s  %s\n' "$c_r" "$c_0" "$*" >&2; exit 1; }
 need() { command -v "$1" >/dev/null 2>&1 || die "required command not found: $1"; }
 
+# Shared target selection for downloading and baking base images.
+parse_image_target() {
+  IMAGE_TARGET=vm
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --rpi)
+        [[ $# -ge 2 ]] || die "--rpi requires 3, 4 or 5"
+        case "$2" in 3|4|5) IMAGE_TARGET="rpi$2" ;; *) die "unsupported Raspberry Pi model: $2 (choose 3, 4 or 5)" ;; esac
+        shift 2 ;;
+      -h|--help)
+        printf 'Usage: %s [--rpi 3|4|5]\nDefault: amd64 VM image. --rpi selects a flashable ARM64 Raspberry Pi image.\n' "$(basename "$0")"
+        exit 0 ;;
+      *) die "unknown argument: $1 (use --help)" ;;
+    esac
+  done
+  IMAGE_BASE_OUTPUT="${IMAGES_DIR}/base-rti.qcow2"
+  IMAGE_FORMAT=qcow2
+  if [[ "$IMAGE_TARGET" != vm ]]; then
+    UBUNTU_ARCH=arm64
+    UBUNTU_BASE_URL="$RPI_BASE_URL"
+    IMAGE_BASE_OUTPUT="${IMAGES_DIR}/base-rti-${IMAGE_TARGET}.img"
+    IMAGE_FORMAT=raw
+  fi
+}
+
+# Resolve the current point-release filename from Ubuntu's checksum manifest.
+resolve_image_name() {
+  local manifest="$1"
+  if [[ "$IMAGE_TARGET" != vm ]]; then
+    UBUNTU_IMAGE="$(awk -v release="$UBUNTU_RELEASE" '
+      { name=$2; sub(/^\*/, "", name)
+        prefix="ubuntu-" release
+        if (index(name, prefix)==1 &&
+            substr(name, length(prefix)+1) ~ /^[.-]/ &&
+            name ~ /-preinstalled-server-arm64\+raspi\.img\.xz$/) print name
+      }' "$manifest" | sort -V | tail -n 1)"
+    [[ -n "$UBUNTU_IMAGE" ]] || die "no Raspberry Pi server image for Ubuntu ${UBUNTU_RELEASE} in manifest"
+  fi
+}
+
 load_config() {
   # shellcheck disable=SC1091
   source "${SETUP_DIR}/roles.env"
