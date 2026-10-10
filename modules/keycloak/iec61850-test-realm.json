@@ -1,0 +1,285 @@
+{
+  "realm": "iec61850-test",
+  "enabled": true,
+
+  "eventsEnabled": true,
+  "eventsListeners": [
+    "jboss-logging"
+  ],
+
+  "enabledEventTypes": [
+    "CLIENT_LOGIN",
+    "REFRESH_TOKEN",
+    "CODE_TO_TOKEN"
+  ],
+
+  "accessTokenLifespan": 60,
+
+  "clients": [
+    {
+      "clientId": "ws-client",
+      "name": "ws-client",
+
+      "enabled": true,
+      "protocol": "openid-connect",
+
+      "publicClient": false,
+      "serviceAccountsEnabled": true,
+
+      "clientAuthenticatorType": "client-secret",
+      "secret": "K4Nrd14seXG52J3xpnIqfMyILTJJu3VI",
+
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false
+    },
+
+    {
+      "clientId": "iec61850-api",
+      "name": "IEC 61850 API",
+
+      "enabled": true,
+      "protocol": "openid-connect",
+
+      "publicClient": false,
+      "bearerOnly": false,
+
+      "serviceAccountsEnabled": true,
+      "authorizationServicesEnabled": true,
+
+      "clientAuthenticatorType": "client-secret",
+
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+
+      "authorizationSettings": {
+        "allowRemoteResourceManagement": false,
+
+        "policyEnforcementMode": "ENFORCING",
+        "decisionStrategy": "UNANIMOUS",
+
+        "scopes": [
+          {
+            "name": "measurement:read"
+          },
+          {
+            "name": "schedule:read"
+          },
+          {
+            "name": "schedule:write"
+          },
+          {
+            "name": "setpoint:read"
+          },
+          {
+            "name": "setpoint:write"
+          }
+        ],
+
+        "resources": [
+          {
+            "name": "cp-871687400000123456",
+
+            "displayName": "Connection Point 871687400000123456",
+
+            "type": "urn:energy:connection-point",
+
+            "ownerManagedAccess": false,
+
+            "attributes": {
+              "connectionPoint": [
+                "871687400000123456"
+              ]
+            },
+
+            "scopes": [
+              {
+                "name": "measurement:read"
+              },
+              {
+                "name": "schedule:read"
+              },
+              {
+                "name": "schedule:write"
+              },
+              {
+                "name": "setpoint:read"
+              },
+              {
+                "name": "setpoint:write"
+              }
+            ]
+          },
+
+          {
+            "name": "cp-871687400000654321",
+
+            "displayName": "Connection Point 871687400000654321",
+
+            "type": "urn:energy:connection-point",
+
+            "ownerManagedAccess": false,
+
+            "attributes": {
+              "connectionPoint": [
+                "871687400000654321"
+              ]
+            },
+
+            "scopes": [
+              {
+                "name": "measurement:read"
+              },
+              {
+                "name": "schedule:read"
+              }
+            ]
+          }
+        ],
+
+        "policies": [
+          {
+            "name": "ws-client-policy",
+
+            "description": "Allow the ws-client OAuth client",
+
+            "type": "client",
+
+            "logic": "POSITIVE",
+
+            "decisionStrategy": "UNANIMOUS",
+
+            "config": {
+              "clients": "[\"ws-client\"]"
+            }
+          },
+
+          {
+            "name": "cp1-measurement-read",
+
+            "description": "Allow ws-client to read measurements from CP1",
+
+            "type": "scope",
+
+            "logic": "POSITIVE",
+
+            "decisionStrategy": "UNANIMOUS",
+
+            "config": {
+              "resources": "[\"cp-871687400000123456\"]",
+              "scopes": "[\"measurement:read\"]",
+              "applyPolicies": "[\"ws-client-policy\"]"
+            }
+          },
+
+          {
+            "name": "cp1-schedule-read",
+
+            "description": "Allow ws-client to read schedules from CP1",
+
+            "type": "scope",
+
+            "logic": "POSITIVE",
+
+            "decisionStrategy": "UNANIMOUS",
+
+            "config": {
+              "resources": "[\"cp-871687400000123456\"]",
+              "scopes": "[\"schedule:read\"]",
+              "applyPolicies": "[\"ws-client-policy\"]"
+            }
+          },
+
+          {
+            "name": "cp1-schedule-write",
+
+            "description": "Allow ws-client to write schedules to CP1",
+
+            "type": "scope",
+
+            "logic": "POSITIVE",
+
+            "decisionStrategy": "UNANIMOUS",
+
+            "config": {
+              "resources": "[\"cp-871687400000123456\"]",
+              "scopes": "[\"schedule:write\"]",
+              "applyPolicies": "[\"ws-client-policy\"]"
+            }
+          },
+
+          {
+            "name": "cp1-setpoint-read",
+
+            "description": "Allow ws-client to read setpoints from CP1",
+
+            "type": "scope",
+
+            "logic": "POSITIVE",
+
+            "decisionStrategy": "UNANIMOUS",
+
+            "config": {
+              "resources": "[\"cp-871687400000123456\"]",
+              "scopes": "[\"setpoint:read\"]",
+              "applyPolicies": "[\"ws-client-policy\"]"
+            }
+          },
+
+          {
+            "name": "cp1-setpoint-write",
+
+            "description": "Allow ws-client to write setpoints to CP1",
+
+            "type": "scope",
+
+            "logic": "POSITIVE",
+
+            "decisionStrategy": "UNANIMOUS",
+
+            "config": {
+              "resources": "[\"cp-871687400000123456\"]",
+              "scopes": "[\"setpoint:write\"]",
+              "applyPolicies": "[\"ws-client-policy\"]"
+            }
+          },
+
+          {
+            "name": "cp2-measurement-read",
+
+            "description": "Allow ws-client to read measurements from CP2",
+
+            "type": "scope",
+
+            "logic": "POSITIVE",
+
+            "decisionStrategy": "UNANIMOUS",
+
+            "config": {
+              "resources": "[\"cp-871687400000654321\"]",
+              "scopes": "[\"measurement:read\"]",
+              "applyPolicies": "[\"ws-client-policy\"]"
+            }
+          },
+
+          {
+            "name": "cp2-schedule-read",
+
+            "description": "Allow ws-client to read schedules from CP2",
+
+            "type": "scope",
+
+            "logic": "POSITIVE",
+
+            "decisionStrategy": "UNANIMOUS",
+
+            "config": {
+              "resources": "[\"cp-871687400000654321\"]",
+              "scopes": "[\"schedule:read\"]",
+              "applyPolicies": "[\"ws-client-policy\"]"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
