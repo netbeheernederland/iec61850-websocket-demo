@@ -1,0 +1,6 @@
+[Unit]
+Description=Show this RTI node's configuration above the console login prompt
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/rti-issue

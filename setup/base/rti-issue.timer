@@ -1,0 +1,10 @@
+[Unit]
+Description=Refresh the RTI console login banner
+
+[Timer]
+OnBootSec=5s
+OnUnitActiveSec=30s
+AccuracySec=5s
+
+[Install]
+WantedBy=timers.target

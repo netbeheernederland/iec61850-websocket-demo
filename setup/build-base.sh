@@ -53,7 +53,7 @@ apt-get update
 apt-get -y -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold dist-upgrade
 apt-get -y install docker.io docker-compose-v2 avahi-daemon libnss-mdns isc-dhcp-server qemu-guest-agent
 apt-get clean
-systemctl enable docker qemu-guest-agent avahi-daemon
+systemctl enable docker qemu-guest-agent avahi-daemon rti-issue.timer
 systemctl disable isc-dhcp-server
 sed -ri 's/^hosts:.*/hosts: files mdns4_minimal [NOTFOUND=return] dns/' /etc/nsswitch.conf
 ${FLASH_KERNEL_CMD}
@@ -104,6 +104,9 @@ customize_rpi_chroot() {
   sudo mount -t tmpfs tmpfs "${RPI_MNT}/run"
   sudo mkdir -p "${RPI_MNT}/run/systemd/resolve"
   sudo cp -L /etc/resolv.conf "${RPI_MNT}/run/systemd/resolve/stub-resolv.conf"
+  sudo install -m 0755 "${SETUP_DIR}/base/rti-issue" "${RPI_MNT}/usr/local/sbin/"
+  sudo install -m 0644 "${SETUP_DIR}/base/rti-issue.service" "${SETUP_DIR}/base/rti-issue.timer" \
+    "${RPI_MNT}/etc/systemd/system/"
   # Keep package postinst scripts from starting services inside the chroot.
   printf '#!/bin/sh\nexit 101\n' | sudo tee "${RPI_MNT}/usr/sbin/policy-rc.d" >/dev/null
   sudo chmod 0755 "${RPI_MNT}/usr/sbin/policy-rc.d"
@@ -159,7 +162,11 @@ log "installing packages into the image (needs network; takes a few minutes)"
 virt-customize --network -a "$out" \
   --update \
   --install docker.io,docker-compose-v2,avahi-daemon,libnss-mdns,isc-dhcp-server,qemu-guest-agent \
-  --run-command 'systemctl enable docker qemu-guest-agent avahi-daemon' \
+  --upload "${SETUP_DIR}/base/rti-issue:/usr/local/sbin/rti-issue" \
+  --chmod 0755:/usr/local/sbin/rti-issue \
+  --upload "${SETUP_DIR}/base/rti-issue.service:/etc/systemd/system/rti-issue.service" \
+  --upload "${SETUP_DIR}/base/rti-issue.timer:/etc/systemd/system/rti-issue.timer" \
+  --run-command 'systemctl enable docker qemu-guest-agent avahi-daemon rti-issue.timer' \
   --run-command 'systemctl disable isc-dhcp-server' \
   --run-command 'sed -ri "s/^hosts:.*/hosts: files mdns4_minimal [NOTFOUND=return] dns/" /etc/nsswitch.conf' \
   ${FK_MACHINE:+--run-command "$FLASH_KERNEL_CMD"} \

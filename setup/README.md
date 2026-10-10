@@ -54,6 +54,7 @@ setup/
   launch.sh          # define libvirt net; virt-install edge first, then the rest
   destroy.sh         # virsh destroy/undefine the fleet
   up.sh              # render (+certs) -> make-disks -> launch
+  base/rti-issue*    # console login banner baked into the base image
   libvirt/rti-demo-net.xml
   certs/             # cfssl config (ca/server/client CSR + profiles); shared with ../docker-compose.yml
   roles/<role>/{compose.yaml[.tmpl], cloud-init.yaml.tmpl}   # self-contained
@@ -216,6 +217,17 @@ Provide ARM64 container images before deployment.
 `make-disks.sh`, `launch.sh` and `up.sh` remain the KVM VM workflow; they do
 not provision or boot physical Raspberry Pis. Without arguments, downloading
 and building still produce the original amd64 VM base.
+
+### Console login banner
+
+Every base image (VM and Pi) shows the node's current configuration above the
+console login prompt: hostname and `.local` name, IPv4 addresses, gateway,
+the Compose project with its `PORT`/`CP`/`MODELPATH`, whether the DHCP server
+is running (edge only) and each container's state and health. It is
+`/etc/issue.d/50-rti.issue`, regenerated every 30 seconds by
+`rti-issue.timer` from `base/rti-issue`. agetty redraws the prompt only when
+the text changes, and the banner is gone once you log in. Run
+`sudo rti-issue` to refresh it immediately.
 
 Tear down with `./destroy.sh` (add `--keep-network` to leave `rti-demo-net`).
 

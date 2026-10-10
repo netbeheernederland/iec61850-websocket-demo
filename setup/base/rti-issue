@@ -1,0 +1,47 @@
+#!/bin/bash
+# Console login banner: agetty prints /etc/issue.d/*.issue above the login
+# prompt only, so this node's current configuration is on screen until
+# someone logs in. Run by rti-issue.timer; agetty is told to redraw only when
+# the text changed, so a half-typed login is not interrupted needlessly.
+set -u
+out="${1:-/etc/issue.d/50-rti.issue}"
+compose="${RTI_COMPOSE:-/etc/rti/compose.yaml}"
+tmp="$(mktemp)"
+trap 'rm -f "$tmp"' EXIT
+
+row() { printf '  %-11s %s\n' "$1" "$2"; }
+
+host="$(hostname)"
+{
+  printf 'RTI node %s  (%s.local)\n' "$host" "$host"
+  ip -4 -o addr show scope global | while read -r _ dev _ addr _; do
+    case "$dev" in docker*|br-*|veth*) continue ;; esac   # Docker's own bridges
+    row "$dev" "$addr"
+  done
+  row gateway "$(ip -4 route show default | awk '{print $3; exit}')"
+  if [[ -f "$compose" ]]; then
+    row compose "$(awk '/^name:/ {print $2; exit}' "$compose")"
+    # The per-node settings render.sh puts in the compose environment.
+    grep -E '^ +(PORT|CP|MODELPATH):' "$compose" | tr -d '"' \
+      | while read -r key val; do row "${key%:}" "${val:--}"; done
+  fi
+  # Only the edge enables the DHCP server.
+  if systemctl -q is-enabled isc-dhcp-server 2>/dev/null; then
+    row dhcpd "$(systemctl is-active isc-dhcp-server)"
+  fi
+  if systemctl -q is-active docker; then
+    # State and health only: the "Up 5 minutes" text would change every minute.
+    timeout 5 docker ps -a --format '{{.Names}} {{.State}} {{.Status}}' 2>/dev/null \
+      | while read -r name state status; do
+          health="$(grep -oE '\((healthy|unhealthy|health: starting)\)' <<<"$status")"
+          row "$name" "$state${health:+ $health}"
+        done
+  fi
+  printf '\n'
+} | tr -d '\\' > "$tmp"   # a backslash would start an agetty escape
+
+if ! cmp -s "$tmp" "$out" 2>/dev/null; then
+  mkdir -p "$(dirname "$out")"
+  install -m 0644 "$tmp" "$out"
+  agetty --reload 2>/dev/null || true
+fi
