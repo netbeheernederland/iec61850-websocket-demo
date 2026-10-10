@@ -6,7 +6,7 @@ name: rti-edge
 
 services:
   rti-bff:
-    image: rti-demo_rti-bff:latest
+    image: rti-bff:latest
     container_name: rti-bff
     network_mode: host
     environment:
@@ -28,7 +28,7 @@ services:
       start_period: 30s
 
   rti-hmi:
-    image: rti-demo_rti-hmi:latest
+    image: rti-hmi:latest
     container_name: rti-hmi
     network_mode: host
     depends_on:

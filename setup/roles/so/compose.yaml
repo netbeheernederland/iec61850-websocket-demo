@@ -4,7 +4,7 @@ name: rti-so
 
 services:
   rti-so:
-    image: rti-demo_rti-so:latest
+    image: rti-so:latest
     container_name: rti-so
     network_mode: host
     environment:

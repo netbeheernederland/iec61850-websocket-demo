@@ -10,11 +10,11 @@ pairs with `../modules/bff`, `roles/fsp` with `../modules/fsp01`. The BFF
 `../modules/bff/config/`); the FSP model files are copied from
 `roles/fsp/models/`, itself seeded from `../modules/fsp01/models/`.
 
-| role   | node(s)                | containers                | notes |
-| ------ | ---------------------- | ------------------------- | ----- |
-| `edge` | `rti-edge`             | `rti-bff`, `rti-hmi`   | also runs the fleet's **dhcpd** + **mDNS**; static IP `192.168.150.2` |
-| `so`   | `rti-so`               | `rti-so`                  | DHCP reservation `.11` |
-| `fsp`  | `rti-fsp01`, `rti-fsp02`, … | `rti-fsp` (1 per node) | templated; add machines by editing `nodes.env` |
+| role   | node(s)                     | containers             | notes                                                                 |
+|--------|-----------------------------|------------------------|-----------------------------------------------------------------------|
+| `edge` | `rti-edge`                  | `rti-bff`, `rti-hmi`   | also runs the fleet's **dhcpd** + **mDNS**; static IP `192.168.150.2` |
+| `so`   | `rti-so`                    | `rti-so`               | DHCP reservation `.11`                                                |
+| `fsp`  | `rti-fsp01`, `rti-fsp02`, … | `rti-fsp` (1 per node) | templated; add machines by editing `nodes.env`                        |
 
 Key differences from the root compose stack:
 
@@ -29,6 +29,14 @@ Key differences from the root compose stack:
   libvirt network does NAT + DNS only (no DHCP of its own).
 * **Images ship as `docker save` tarballs**, copied into each disk and
   `docker load`ed on first boot. Nothing is pulled from a registry.
+* Images built by the root Compose file are named
+  `${RTI_IMAGE_REPO}/rti-<role>:${RTI_IMAGE_TAG}`, where `<role>` is `bff`,
+  `hmi`, `so` or `fsp`. The default repository is
+  `netbeheer-nederland/iec61850-websocket`; published images use
+  `ghcr.io/netbeheer-nederland/iec61850-websocket`. The default tag is `latest`.
+  `build-tarballs.sh` reads these names and automatically tags the images as
+  `rti-<role>:latest` before saving them, matching the fleet's
+  Compose files and existing tarball filenames.
 * Containers use `network_mode: host`.
 
 ## Layout
@@ -39,7 +47,7 @@ setup/
   nodes.env          # the fleet: one line per VM
   download-images.sh # fetch + verify the Ubuntu cloud image
   build-base.sh      # -> images/base-rti.qcow2 (docker, avahi, dhcpd baked in)
-  build-tarballs.sh  # docker save rti-demo_* -> images/*.tar
+  build-tarballs.sh  # docker save rti-* -> images/*.tar
   render.sh          # certs + templates -> build/<node>/{user-data,meta-data,spec,compose.yaml}
   make-disks.sh      # per node: qcow2 overlay + virt-customize copy-in + seed ISO
   launch.sh          # define libvirt net; virt-install edge first, then the rest
@@ -67,8 +75,8 @@ cd setup
 # one-time
 ./download-images.sh          # Ubuntu 24.04 cloud image
 ./build-base.sh               # golden image (needs network; a few minutes)
-docker compose -f ../docker-compose.yml build    # if the rti-demo_* images aren't built yet
-./build-tarballs.sh           # docker save them
+docker compose -f ../docker-compose.yml build    # build repository-named images
+./build-tarballs.sh           # automatically retag + docker save them
 
 # each time you change nodes.env / templates
 ./render.sh                   # 1. mint certs (from certs/) + expand templates -> build/<node>/
@@ -80,6 +88,18 @@ virsh list --all
 virsh console rti-edge        # watch first boot
 ssh rti@192.168.150.2 'sudo cloud-init status --wait && docker ps'
 ```
+
+To export published images already pulled onto the host, select their
+repository and tag explicitly:
+
+```bash
+RTI_IMAGE_REPO=ghcr.io/netbeheer-nederland/iec61850-websocket \
+RTI_IMAGE_TAG=latest ./build-tarballs.sh
+```
+
+The exporter requires all four source images locally and does not pull them.
+Set the same environment variables for Compose builds and tarball exports
+when using a custom repository or tag.
 
 `render.sh` is where the fleet's TLS material is generated: on the first run
 (and whenever the node list — hence the SAN set — changes) it runs

@@ -9,9 +9,9 @@ REPO_URL="https://github.com/Netbeheer-Nederland/iec61850-websocket.git"
 BRANCH="initial-refactor"
 EXAMPLE_SUBDIR="examples/rti-demo"
 
-IMAGE_FSP="rti-demo-rti-fsp"
-IMAGE_SO="rti-demo-rti-so"
-IMAGE_IO="rti-demo-rti-io"
+IMAGE_FSP="rti-fsp"
+IMAGE_SO="rti-so"
+IMAGE_IO="rti-io"
 
 IMAGE_BASE="netbeheer-nederland/iec61850-websocket"
 IMAGE_FSP_TAGGED="${IMAGE_BASE}/rti-fsp"
@@ -27,7 +27,7 @@ IO_DOCKERFILE_REL="${EXAMPLE_SUBDIR}/Dockerfile.IO"
 
 PLATFORM_AMD64="linux/amd64"
 PLATFORM_ARM64V8="linux/arm64/v8"
-BUILDX_BUILDER="rti-demo-builder"
+BUILDX_BUILDER="rti-builder"
 
 # Role modules (local to this repo), providing each machine's docker-compose.yml
 SO_MODULE_COMPOSE="${REPO_ROOT}/modules/so/docker-compose.yml"
@@ -36,14 +36,14 @@ FSP01_MODULE_COMPOSE="${REPO_ROOT}/modules/fsp01/docker-compose.yml"
 # Script run on the target machine to load the image archives and start compose
 LOAD_AND_START_SCRIPT="${SCRIPT_DIR}/load-and-start.sh"
 
-MACHINE_SO_DEST="pi@192.168.100.97:rti-demo"       # role: so    -- receives: so, io, docker-compose.yml
-MACHINE_FSP01_DEST="pi@192.168.100.98:rti-demo"    # role: fsp01 -- receives: fsp, io, docker-compose.yml
+MACHINE_SO_DEST="pi@192.168.100.97:rti"       # role: so    -- receives: so, io, docker-compose.yml
+MACHINE_FSP01_DEST="pi@192.168.100.98:rti"    # role: fsp01 -- receives: fsp, io, docker-compose.yml
 
 # Persistent clone, reused across runs instead of re-cloning every time
 CLONE_DIR="${CLONE_DIR:-${TMPDIR:-/tmp}/iec61850-websocket-clone}"
 
 # --- Export directory (ephemeral) ---------------------------------------
-EXPORT_DIR="$(mktemp -d -t rti-demo-exports-XXXXXX)"
+EXPORT_DIR="$(mktemp -d -t rti-exports-XXXXXX)"
 echo "Using export directory: ${EXPORT_DIR}"
 
 cleanup() {
