@@ -7,7 +7,7 @@ services:
     environment:
       - PORT=5001
       - CP=cp1
-#       - MODELPATH=/models/model.py
+#       - MODELPATH=/models/model_1.py
       - DEMO_IO_URL=http://rti_fsp_io:8000
     networks:
       - rti-network
