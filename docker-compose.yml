@@ -11,7 +11,7 @@ services:
     environment:
       # Comma-separated SANs baked into the server & client certificates.
       # Override from the host env (SERVER_HOSTNAMES=...) if you add services.
-      SERVER_HOSTNAMES: ${SERVER_HOSTNAMES:-localhost,127.0.0.1,rti-hmi,rti-bff,rti-fsp01,rti-fsp02,rti-so}
+      SERVER_HOSTNAMES: ${SERVER_HOSTNAMES:-localhost,127.0.0.1,keycloak,rti-hmi,rti-bff,rti-fsp01,rti-fsp02,rti-so}
       CFSSL_VERSION: "1.6.5"
     volumes:
       - ./setup/certs:/config:ro
@@ -50,6 +50,11 @@ services:
           -profile=client -hostname="$${SERVER_HOSTNAMES}" \
           client-csr.json | cfssljson -bare client
 
+        echo "generating keycloak certificate (SANs: $${SERVER_HOSTNAMES})..."
+        cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json \
+          -profile=server -hostname="$${SERVER_HOSTNAMES}" \
+          server-csr.json | cfssljson -bare keycloak
+
         chmod 644 /out/*.pem
         echo "certificates written to the 'certs' volume:"
         ls -1 /out/*.pem
@@ -57,9 +62,63 @@ services:
       - rti-network
     restart: "no"
 
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    container_name: keycloak-dev
+    command: [ "start-dev", "--import-realm" ]
+    ports:
+      - "8081:8081"
+      - "8443:8443"
+    depends_on:
+      cert-generator:
+        condition: service_completed_successfully
+    environment:
+      KC_HOSTNAME: localhost
+      # HTTP on 8081, inside and outside the container: 8080 is the rti-demo HMI.
+      # One port everywhere keeps the token issuer the same for the host and
+      # for containers (http://localhost:8081/realms/...).
+      KC_HTTP_PORT: 8081
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HTTPS_CERTIFICATE_FILE: /certs/keycloak.pem
+      KC_HTTPS_CERTIFICATE_KEY_FILE: /certs/keycloak-key.pem
+    volumes:
+      - ./modules/keycloak:/opt/keycloak/data/import
+      - certs:/certs:ro
+    networks:
+      - rti-network
+
+
+  # BFF Server
+  rti-bff:
+    image: ${RTI_IMAGE_REPO:-netbeheer-nederland/iec61850-websocket}/rti-bff:${RTI_IMAGE_TAG:-latest}
+    container_name: rti-bff
+    ports:
+      - "3000:3000"
+    depends_on:
+      cert-generator:
+        condition: service_completed_successfully
+    environment:
+#      RTI_DOCKER_ENABLED: true
+#      RTI_SERVICE_DISCOVERY_ENABLED: true
+      LOG_LEVEL: debug
+      BFF_CONNECTIONS_FILE: "/config/connections.json"
+      BFF_PLAYBOOKS_DIR: "/config/playbooks"
+    volumes:
+      - ./modules/bff/config:/config
+      - ./playbooks:/app/examples/rti-demo/playbooks:ro
+      - certs:/certs:ro
+    networks:
+      - rti-network
+    labels:
+      - "rti.service=rti-bff"
+      - "rti.type=RTI-BFF"
+      - "rti.host=rti-bff"
+      - "rti.port=3000"
+
   # HMI Web Server
   rti-hmi:
-    image: netbeheer-nederland/iec61850-websocket/rti-hmi:latest
+    image: ${RTI_IMAGE_REPO:-netbeheer-nederland/iec61850-websocket}/rti-hmi:${RTI_IMAGE_TAG:-latest}
     container_name: rti-hmi
     ports:
       - "80:80"
@@ -72,52 +131,39 @@ services:
       - certs:/certs:ro
     networks:
       - rti-network
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
 
-  # BFF Server
-  rti-bff:
-    image: netbeheer-nederland/iec61850-websocket/rti-bff:latest
-    container_name: rti-bff
-    ports:
-      - "3000:3000"
+  # RTI SO (Acsi-Client)
+  rti-so:
+    image: ${RTI_IMAGE_REPO:-netbeheer-nederland/iec61850-websocket}/rti-so:${RTI_IMAGE_TAG:-latest}
+    container_name: rti-so
+#    ports:
+#      - "5000:5000"
+#      - "8765:8765"    # WebSocket port - MUST ADD
     depends_on:
       cert-generator:
         condition: service_completed_successfully
     environment:
-      RTI_DOCKER_ENABLED: true
-      RTI_SERVICE_DISCOVERY_ENABLED: true
-      PORT: 3000
+#      PORT: 5000
       LOG_LEVEL: debug
-#      PYTHONUNBUFFERED: 1
-      BFF_CONNECTIONS_FILE: "/config/connections.json"
+#      BFF_CONNECTIONS_FILE: /config/connections.json
+#      BFF_PLAYBOOKS_DIR: /config/playbooks
     volumes:
-      - ./modules/bff/config:/config
       - certs:/certs:ro
     networks:
       - rti-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
-      interval: 30s
-      timeout: 30s
-      retries: 5
-      start_period: 30s
     labels:
-      - "rti.service=rti-bff"
-      - "rti.type=RTI-BFF"
-      - "rti.host=rti-bff"
-      - "rti.port=3000"
+      - "rti.service=rti-so"
+      - "rti.type=RTI-SO"
+      - "rti.host=rti-so"
+      - "rti.port=5000"
+
 
   # RTI-FSP (Acsi-Server)
   rti-fsp01:
-    image: netbeheer-nederland/iec61850-websocket/rti-fsp:latest
+    image: ${RTI_IMAGE_REPO:-netbeheer-nederland/iec61850-websocket}/rti-fsp:${RTI_IMAGE_TAG:-latest}
     container_name: rti-fsp01
-    ports:
-      - "5001:5001"
+#    ports:
+#      - "5001:5001"
     depends_on:
       cert-generator:
         condition: service_completed_successfully
@@ -125,15 +171,9 @@ services:
       PORT: 5001
       CP: cp1
       LOG_LEVEL: debug
-      MODELPATH: "/models/model.py"
+      MODELPATH: "/models/model_1.py"
     networks:
       - rti-network
-    healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:5001/api/status" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 20s
     labels:
       - "rti.service=rti-fsp01"
       - "rti.type=RTI-FSP"
@@ -145,10 +185,10 @@ services:
 
   # Second FSP instance
   rti-fsp02:
-    image: netbeheer-nederland/iec61850-websocket/rti-fsp:latest
+    image: ${RTI_IMAGE_REPO:-netbeheer-nederland/iec61850-websocket}/rti-fsp:${RTI_IMAGE_TAG:-latest}
     container_name: rti-fsp02
-    ports:
-      - "5005:5005"  # Map to different host port, same container port
+#    ports:
+#      - "5005:5005"  # Map to different host port, same container port
     depends_on:
       cert-generator:
         condition: service_completed_successfully
@@ -157,51 +197,16 @@ services:
     environment:
       PORT: 5005
       CP: cp2
-#      MODELPATH: /models/model_2.py
+      MODELPATH: /models/model_2.py
       LOG_LEVEL: debug
     volumes:
+      - ./modules/fsp02/models:/models
       - certs:/certs:ro
-    healthcheck: # ✅ Add healthcheck (optional but recommended)
-      test: [ "CMD", "curl", "-f", "http://localhost:5005/api/status" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 20s
     labels: # ✅ Add labels for consistency
       - "rti.service=rti-fsp02"
       - "rti.type=RTI-FSP"
       - "rti.host=rti-fsp02"
       - "rti.port=5005"
-
-  # RTI SO (Acsi-Client)
-  rti-so:
-    image: netbeheer-nederland/iec61850-websocket/rti-so:latest
-    container_name: rti-so
-    ports:
-      - "5000:5000"
-      - "8765:8765"    # WebSocket port - MUST ADD
-    depends_on:
-      cert-generator:
-        condition: service_completed_successfully
-    environment:
-      PORT: 5000
-      LOG_LEVEL: debug
-    volumes:
-      - certs:/certs:ro
-    networks:
-      - rti-network
-    healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:5000/api/status" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 20s
-    labels:
-      - "rti.service=rti-so"
-      - "rti.type=RTI-SO"
-      - "rti.host=rti-so"
-      - "rti.port=5000"
-
 
 volumes:
   # Shared certificate store populated by cert-generator, mounted read-only
