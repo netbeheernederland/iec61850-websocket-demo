@@ -124,7 +124,7 @@ services:
       - "80:80"
     depends_on:
       rti-bff:
-        condition: service_healthy
+        condition: service_started
       cert-generator:
         condition: service_completed_successfully
     volumes:
