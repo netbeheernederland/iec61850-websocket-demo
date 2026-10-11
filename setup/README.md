@@ -206,7 +206,7 @@ login disabled, so add a login before flashing:
 ./pi-user-data.sh --rpi 5 --hostname rti-pi5   # writes into images/base-rti-rpi5.img
 ```
 
-This writes `user-data` creating `rti` (sudo, docker) with `SSH_PUBKEY` and the
+This writes `user-data` creating `rti` (sudo, docker, i2c) with `SSH_PUBKEY` and the
 hostname, without root (needs `mtools`). For a card that is already flashed, mount its
 `system-boot` partition and pass `--boot-dir <mountpoint>` instead; the script
 also changes the meta-data instance id so cloud-init applies it on the next

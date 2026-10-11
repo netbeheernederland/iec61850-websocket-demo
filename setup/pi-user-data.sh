@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Put a login on a Raspberry Pi: write cloud-init user-data to the boot
-# partition that creates ${VM_USER} with SSH_PUBKEY, sudo and docker, and sets
+# partition that creates ${VM_USER} with SSH_PUBKEY, sudo, docker and i2c, and sets
 # the hostname. The stock Ubuntu user-data only has `ubuntu` with password SSH
 # login disabled, so without this a flashed Pi cannot be reached.
 #
@@ -50,9 +50,13 @@ hostname: ${hostname}
 manage_etc_hosts: localhost
 preserve_hostname: false
 
+# i2c-tools creates i2c and gives it /dev/i2c-*; listing it here first means
+# the user is still created on an image built before i2c-tools was added.
+groups: [i2c]
+
 users:
   - name: ${VM_USER}
-    groups: [sudo, docker]
+    groups: [sudo, docker, i2c]
     shell: /bin/bash
     sudo: "ALL=(ALL) NOPASSWD:ALL"
     lock_passwd: true
