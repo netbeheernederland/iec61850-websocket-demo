@@ -45,13 +45,17 @@ case "$IMAGE_TARGET" in
 esac
 FLASH_KERNEL_CMD="FK_FORCE=yes FK_IGNORE_EFI=yes FK_MACHINE='${FK_MACHINE}' flash-kernel"
 
+# Extra packages for Pi images only. I2C is already on in the stock config.txt
+# (dtparam=i2c_arm=on); i2c-tools adds i2cdetect/i2cget/i2cset.
+RPI_PACKAGES="i2c-tools"
+
 # Same steps as the virt-customize call below, run as a script inside the
 # chroot. Keep the two in sync.
 RPI_GUEST_SCRIPT="
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
 apt-get -y -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold dist-upgrade
-apt-get -y install docker.io docker-compose-v2 avahi-daemon libnss-mdns isc-dhcp-server qemu-guest-agent
+apt-get -y install docker.io docker-compose-v2 avahi-daemon libnss-mdns isc-dhcp-server qemu-guest-agent ${RPI_PACKAGES}
 apt-get clean
 systemctl enable docker qemu-guest-agent avahi-daemon rti-issue.timer
 systemctl disable isc-dhcp-server
@@ -171,6 +175,7 @@ log "installing packages into the image (needs network; takes a few minutes)"
 virt-customize --network -a "$out" \
   --update \
   --install docker.io,docker-compose-v2,avahi-daemon,libnss-mdns,isc-dhcp-server,qemu-guest-agent \
+  ${FK_MACHINE:+--install "${RPI_PACKAGES// /,}"} \
   --upload "${SETUP_DIR}/base/rti-issue:/usr/local/sbin/rti-issue" \
   --chmod 0755:/usr/local/sbin/rti-issue \
   --upload "${SETUP_DIR}/base/rti-issue.service:/etc/systemd/system/rti-issue.service" \
