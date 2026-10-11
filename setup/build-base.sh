@@ -152,9 +152,18 @@ else
   qemu-img convert -O qcow2 "$src" "$out"
 fi
 
+image_ready() {
+  log "golden image ready: ${out}"
+  if [[ "$IMAGE_TARGET" != vm ]]; then
+    # The stock Pi user-data has no usable SSH login, and this build has just
+    # replaced any user-data written into the previous image.
+    warn "no SSH login yet: run ./pi-user-data.sh --rpi ${IMAGE_TARGET#rpi} --hostname <name> before flashing"
+  fi
+}
+
 if [[ "$CUSTOMIZE" == chroot ]]; then
   customize_rpi_chroot "$out"
-  log "golden image ready: ${out}"
+  image_ready
   exit 0
 fi
 
@@ -173,4 +182,4 @@ virt-customize --network -a "$out" \
   --run-command 'rm -f /etc/machine-id && touch /etc/machine-id' \
   --run-command 'echo rti-base > /etc/hostname'
 
-log "golden image ready: ${out}"
+image_ready
