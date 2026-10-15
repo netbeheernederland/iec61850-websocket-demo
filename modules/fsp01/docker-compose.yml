@@ -7,8 +7,11 @@ services:
     environment:
       - PORT=5001
       - CP=cp1
-#       - MODELPATH=/models/model_1.py
-      - DEMO_IO_URL=http://rti_fsp_io:8000
+      - MODELPATH=/models/model_1.py
+      # The IO plugin, installed in the image, reaches the IO server, which
+      # writes input changes back to ACSI_BASE_URL.
+      - IO_URL=http://rti_fsp_io:8000
+      - ACSI_BASE_URL=http://rti-fsp:5001
     networks:
       - rti-network
     healthcheck:
@@ -22,10 +25,9 @@ services:
       - "rti.type=RTI-FSP"
       - "rti.host=rti-fsp"
       - "rti.port=5001"
-#     volumes:
-#       - ../../../examples/rti-demo/fsp:/app/fsp
-#       - ../../../examples/rti-demo/models:/models
-#       - ../../../examples/rti-demo/demo_IO:/app/demo_IO
+    volumes:
+      # models/ is copied next to this file by scripts/deploy-rti-demo.sh
+      - ./models:/models
 
   rti_fsp_io:
     container_name: rti_fsp_io
@@ -34,7 +36,6 @@ services:
       - "8000:8000"
     environment:
       - PORT=8000
-      - ACSI_BASE_URL=http://rti-fsp:5001
     devices:
       - "/dev/gpiochip0:/dev/gpiochip0"
       - "/dev/gpiochip4:/dev/gpiochip4"
@@ -61,7 +62,6 @@ services:
       - "rti.type=GPIO-LED-Control"
       - "rti.host=demo_io_fsp"
       - "rti.port=8000"
-    command: ["python", "-u", "demo_IO/main.py"]
 
 networks:
   rti-network:

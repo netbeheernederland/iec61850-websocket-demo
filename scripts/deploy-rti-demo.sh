@@ -21,9 +21,9 @@ IMAGE_IO_TAGGED="${IMAGE_BASE}/rti-io"
 # Build dockerfiles/contexts as declared in examples/rti-demo/docker-compose.yml
 # (paths are made absolute below, once CLONE_DIR is known: -f is resolved
 # relative to the shell's cwd, not the build context, by docker buildx build)
-FSP_DOCKERFILE_REL="${EXAMPLE_SUBDIR}/Dockerfile.rti-fsp"
-SO_DOCKERFILE_REL="${EXAMPLE_SUBDIR}/Dockerfile.rti-so"
-IO_DOCKERFILE_REL="${EXAMPLE_SUBDIR}/Dockerfile.IO"
+FSP_DOCKERFILE_REL="${EXAMPLE_SUBDIR}/modules/fsp/docker/Dockerfile"
+SO_DOCKERFILE_REL="${EXAMPLE_SUBDIR}/modules/so/docker/Dockerfile"
+IO_DOCKERFILE_REL="${EXAMPLE_SUBDIR}/modules/io/docker/Dockerfile"
 
 PLATFORM_AMD64="linux/amd64"
 PLATFORM_ARM64V8="linux/arm64/v8"
@@ -32,6 +32,8 @@ BUILDX_BUILDER="rti-builder"
 # Role modules (local to this repo), providing each machine's docker-compose.yml
 SO_MODULE_COMPOSE="${REPO_ROOT}/modules/so/docker-compose.yml"
 FSP01_MODULE_COMPOSE="${REPO_ROOT}/modules/fsp01/docker-compose.yml"
+# fsp01's model, mounted at /models by its compose file (MODELPATH)
+FSP01_MODULE_MODELS="${REPO_ROOT}/modules/fsp01/models"
 
 # Script run on the target machine to load the image archives and start compose
 LOAD_AND_START_SCRIPT="${SCRIPT_DIR}/load-and-start.sh"
@@ -92,7 +94,9 @@ build_arch() {
     -f "${dockerfile}" -t "${tag}" --load "${context}"
 }
 
-IO_CONTEXT="${CLONE_DIR}/${EXAMPLE_SUBDIR}"
+# fsp and so build from the repo root (shared uv.lock, ws61850 core in src/);
+# io builds from its own module directory
+IO_CONTEXT="${CLONE_DIR}/${EXAMPLE_SUBDIR}/modules/io"
 
 # amd64
 build_arch "${FSP_DOCKERFILE}" "${CLONE_DIR}" "${PLATFORM_AMD64}" "${IMAGE_FSP}:amd64"
@@ -128,9 +132,9 @@ docker save "${IMAGE_IO_TAGGED}" | gzip > "${IO_TAR}"
 echo "Copying ${IMAGE_SO}, ${IMAGE_IO}, so docker-compose.yml and load-and-start.sh to so machine (${MACHINE_SO_DEST})..."
 scp "${SO_TAR}" "${IO_TAR}" "${SO_MODULE_COMPOSE}" "${LOAD_AND_START_SCRIPT}" "${MACHINE_SO_DEST}"
 
-# fsp01 machine gets: fsp, io, modules/fsp01/docker-compose.yml, load-and-start.sh
-echo "Copying ${IMAGE_FSP}, ${IMAGE_IO}, fsp01 docker-compose.yml and load-and-start.sh to fsp01 machine (${MACHINE_FSP01_DEST})..."
-scp "${FSP_TAR}" "${IO_TAR}" "${FSP01_MODULE_COMPOSE}" "${LOAD_AND_START_SCRIPT}" "${MACHINE_FSP01_DEST}"
+# fsp01 machine gets: fsp, io, modules/fsp01/docker-compose.yml, models/, load-and-start.sh
+echo "Copying ${IMAGE_FSP}, ${IMAGE_IO}, fsp01 docker-compose.yml, models and load-and-start.sh to fsp01 machine (${MACHINE_FSP01_DEST})..."
+scp -r "${FSP_TAR}" "${IO_TAR}" "${FSP01_MODULE_COMPOSE}" "${FSP01_MODULE_MODELS}" "${LOAD_AND_START_SCRIPT}" "${MACHINE_FSP01_DEST}"
 
 echo "On each target machine, run: chmod +x load-and-start.sh && ./load-and-start.sh"
 

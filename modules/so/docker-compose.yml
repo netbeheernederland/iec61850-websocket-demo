@@ -7,7 +7,10 @@ services:
       - "8765:8765"
     environment:
       - PORT=5002
-      - DEMO_IO_URL=http://rti-so-io:8000
+      # The IO plugin, installed in the image, reaches the IO server, which
+      # writes input changes back to ACSI_BASE_URL.
+      - IO_URL=http://rti-so-io:8000
+      - ACSI_BASE_URL=http://rti-so:5002
     networks:
       - rti-network
     healthcheck:
@@ -55,7 +58,6 @@ services:
       - "rti.type=GPIO-LED-Control"
       - "rti.host=demo_io_so"
       - "rti.port=8000"
-    command: ["python", "-u", "demo_IO/main.py"]
 
 networks:
   rti-network:
