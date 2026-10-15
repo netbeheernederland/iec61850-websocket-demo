@@ -37,8 +37,15 @@ FSP01_MODULE_MODELS="${REPO_ROOT}/modules/fsp01/models"
 # Script run on the target machine to load the image archives and start compose
 LOAD_AND_START_SCRIPT="${SCRIPT_DIR}/load-and-start.sh"
 
-MACHINE_SO_DEST="pi@192.168.100.97:rti"       # role: so    -- receives: so, io, docker-compose.yml
-MACHINE_FSP01_DEST="pi@192.168.100.98:rti"    # role: fsp01 -- receives: fsp, io, docker-compose.yml
+# Login user on the Pis: rti, as created by setup/pi-user-data.sh (VM_USER in
+# setup/roles.env). Override for a Pi set up otherwise, e.g. TARGET_USER=pi.
+TARGET_USER="${TARGET_USER:-rti}"
+SO_HOST="${SO_HOST:-192.168.100.97}"
+FSP01_HOST="${FSP01_HOST:-192.168.100.98}"
+TARGET_DIR="rti"                               # relative to TARGET_USER's home
+
+MACHINE_SO="${TARGET_USER}@${SO_HOST}"         # role: so    -- receives: so, io, docker-compose.yml
+MACHINE_FSP01="${TARGET_USER}@${FSP01_HOST}"   # role: fsp01 -- receives: fsp, io, docker-compose.yml, models/
 
 # Persistent clone, reused across runs instead of re-cloning every time
 CLONE_DIR="${CLONE_DIR:-${TMPDIR:-/tmp}/iec61850-websocket-clone}"
@@ -121,13 +128,16 @@ echo "Exporting ${IMAGE_IO_TAGGED} (arm64/v8)..."
 docker save "${IMAGE_IO_TAGGED}" | gzip > "${IO_TAR}"
 
 # --- Copy images, role compose file and load-and-start script to target machines ------------------
+# scp needs the target directory to exist when copying several files
 # so machine gets: so, io, modules/so/docker-compose.yml, load-and-start.sh
-echo "Copying ${IMAGE_SO}, ${IMAGE_IO}, so docker-compose.yml and load-and-start.sh to so machine (${MACHINE_SO_DEST})..."
-scp "${SO_TAR}" "${IO_TAR}" "${SO_MODULE_COMPOSE}" "${LOAD_AND_START_SCRIPT}" "${MACHINE_SO_DEST}"
+echo "Copying ${IMAGE_SO}, ${IMAGE_IO}, so docker-compose.yml and load-and-start.sh to so machine (${MACHINE_SO}:${TARGET_DIR})..."
+ssh "${MACHINE_SO}" mkdir -p "${TARGET_DIR}"
+scp "${SO_TAR}" "${IO_TAR}" "${SO_MODULE_COMPOSE}" "${LOAD_AND_START_SCRIPT}" "${MACHINE_SO}:${TARGET_DIR}"
 
 # fsp01 machine gets: fsp, io, modules/fsp01/docker-compose.yml, models/, load-and-start.sh
-echo "Copying ${IMAGE_FSP}, ${IMAGE_IO}, fsp01 docker-compose.yml, models and load-and-start.sh to fsp01 machine (${MACHINE_FSP01_DEST})..."
-scp -r "${FSP_TAR}" "${IO_TAR}" "${FSP01_MODULE_COMPOSE}" "${FSP01_MODULE_MODELS}" "${LOAD_AND_START_SCRIPT}" "${MACHINE_FSP01_DEST}"
+echo "Copying ${IMAGE_FSP}, ${IMAGE_IO}, fsp01 docker-compose.yml, models and load-and-start.sh to fsp01 machine (${MACHINE_FSP01}:${TARGET_DIR})..."
+ssh "${MACHINE_FSP01}" mkdir -p "${TARGET_DIR}"
+scp -r "${FSP_TAR}" "${IO_TAR}" "${FSP01_MODULE_COMPOSE}" "${FSP01_MODULE_MODELS}" "${LOAD_AND_START_SCRIPT}" "${MACHINE_FSP01}:${TARGET_DIR}"
 
 echo "On each target machine, run: chmod +x load-and-start.sh && ./load-and-start.sh"
 
