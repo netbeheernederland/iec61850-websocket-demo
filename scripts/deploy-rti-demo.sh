@@ -25,7 +25,6 @@ FSP_DOCKERFILE_REL="${EXAMPLE_SUBDIR}/modules/fsp/docker/Dockerfile"
 SO_DOCKERFILE_REL="${EXAMPLE_SUBDIR}/modules/so/docker/Dockerfile"
 IO_DOCKERFILE_REL="${EXAMPLE_SUBDIR}/modules/io/docker/Dockerfile"
 
-PLATFORM_AMD64="linux/amd64"
 PLATFORM_ARM64V8="linux/arm64/v8"
 BUILDX_BUILDER="rti-builder"
 
@@ -86,7 +85,7 @@ fi
 docker buildx use "${BUILDX_BUILDER}"
 docker buildx inspect --bootstrap >/dev/null
 
-# --- Build amd64 and arm64/v8 images for fsp, so and io --------------------
+# --- Build arm64/v8 images for fsp, so and io (the only arch the pis run) --
 build_arch() {
   local dockerfile="$1" context="$2" platform="$3" tag="$4"
   echo "Building ${tag} for ${platform}..."
@@ -98,12 +97,6 @@ build_arch() {
 # io builds from its own module directory
 IO_CONTEXT="${CLONE_DIR}/${EXAMPLE_SUBDIR}/modules/io"
 
-# amd64
-build_arch "${FSP_DOCKERFILE}" "${CLONE_DIR}" "${PLATFORM_AMD64}" "${IMAGE_FSP}:amd64"
-build_arch "${SO_DOCKERFILE}" "${CLONE_DIR}" "${PLATFORM_AMD64}" "${IMAGE_SO}:amd64"
-build_arch "${IO_DOCKERFILE}" "${IO_CONTEXT}" "${PLATFORM_AMD64}" "${IMAGE_IO}:amd64"
-
-# arm64/v8
 build_arch "${FSP_DOCKERFILE}" "${CLONE_DIR}" "${PLATFORM_ARM64V8}" "${IMAGE_FSP}:arm64v8"
 build_arch "${SO_DOCKERFILE}" "${CLONE_DIR}" "${PLATFORM_ARM64V8}" "${IMAGE_SO}:arm64v8"
 build_arch "${IO_DOCKERFILE}" "${IO_CONTEXT}" "${PLATFORM_ARM64V8}" "${IMAGE_IO}:arm64v8"

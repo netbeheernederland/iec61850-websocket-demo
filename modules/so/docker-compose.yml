@@ -39,6 +39,12 @@ services:
       - "/dev/gpiochip11:/dev/gpiochip11"
       - "/dev/gpiochip12:/dev/gpiochip12"
       - "/dev/gpiochip13:/dev/gpiochip13"
+      # I2C (e.g. the SSD1306 OLED, decision 0024) and SPI, as upstream
+      - "/dev/i2c-1:/dev/i2c-1"
+      - "/dev/i2c-13:/dev/i2c-13"
+      - "/dev/i2c-14:/dev/i2c-14"
+      - "/dev/spidev0.0:/dev/spidev0.0"
+      - "/dev/spidev0.1:/dev/spidev0.1"
     privileged: true
     ipc: host
     security_opt:
