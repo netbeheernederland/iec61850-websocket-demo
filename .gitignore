@@ -6,3 +6,6 @@
 
 # JetBrains IDE
 .idea/
+
+# Image archives from scripts/build-rti-demo.sh
+dist/

@@ -1,144 +1,125 @@
 #!/usr/bin/env bash
+# Copy the rti-demo image archives built by build-rti-demo.sh, plus each
+# machine's role files, to one or more Pis.
+#
+# Usage: deploy-rti-demo.sh [--start] [machine ...]   (no machines: all)
+#        deploy-rti-demo.sh --list
+#
+#   --start  also run load-and-start.sh on each machine after copying
+#   --list   show the known machines and exit
+#
+# Environment:
+#   TARGET_USER    login user on the Pis (default: rti)
+#   SO_HOST        address of the so machine
+#   FSP01_HOST     address of the fsp01 machine
+#   RTI_IMAGE_DIR  where build-rti-demo.sh wrote the archives
 set -euo pipefail
 
 # --- Configuration -----------------------------------------------------
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-REPO_URL="https://github.com/Netbeheer-Nederland/iec61850-websocket.git"
-BRANCH="initial-refactor"
-EXAMPLE_SUBDIR="examples/rti-demo"
-
-IMAGE_FSP="rti-fsp"
-IMAGE_SO="rti-so"
-IMAGE_IO="rti-io"
-
-IMAGE_BASE="netbeheer-nederland/iec61850-websocket"
-IMAGE_FSP_TAGGED="${IMAGE_BASE}/rti-fsp"
-IMAGE_SO_TAGGED="${IMAGE_BASE}/rti-so"
-IMAGE_IO_TAGGED="${IMAGE_BASE}/rti-io"
-
-# Build dockerfiles/contexts as declared in examples/rti-demo/docker-compose.yml
-# (paths are made absolute below, once CLONE_DIR is known: -f is resolved
-# relative to the shell's cwd, not the build context, by docker buildx build)
-FSP_DOCKERFILE_REL="${EXAMPLE_SUBDIR}/modules/fsp/docker/Dockerfile"
-SO_DOCKERFILE_REL="${EXAMPLE_SUBDIR}/modules/so/docker/Dockerfile"
-IO_DOCKERFILE_REL="${EXAMPLE_SUBDIR}/modules/io/docker/Dockerfile"
-
-PLATFORM_ARM64V8="linux/arm64/v8"
-BUILDX_BUILDER="rti-builder"
-
-# Role modules (local to this repo), providing each machine's docker-compose.yml
-SO_MODULE_COMPOSE="${REPO_ROOT}/modules/so/docker-compose.yml"
-FSP01_MODULE_COMPOSE="${REPO_ROOT}/modules/fsp01/docker-compose.yml"
-# fsp01's model, mounted at /models by its compose file (MODELPATH)
-FSP01_MODULE_MODELS="${REPO_ROOT}/modules/fsp01/models"
-
-# Script run on the target machine to load the image archives and start compose
-LOAD_AND_START_SCRIPT="${SCRIPT_DIR}/load-and-start.sh"
+RTI_IMAGE_DIR="${RTI_IMAGE_DIR:-${REPO_ROOT}/dist/rti-images}"
 
 # Login user on the Pis: rti, as created by setup/pi-user-data.sh (VM_USER in
 # setup/roles.env). Override for a Pi set up otherwise, e.g. TARGET_USER=pi.
 TARGET_USER="${TARGET_USER:-rti}"
-SO_HOST="${SO_HOST:-192.168.100.97}"
-FSP01_HOST="${FSP01_HOST:-192.168.100.98}"
 TARGET_DIR="rti"                               # relative to TARGET_USER's home
 
-MACHINE_SO="${TARGET_USER}@${SO_HOST}"         # role: so    -- receives: so, io, docker-compose.yml
-MACHINE_FSP01="${TARGET_USER}@${FSP01_HOST}"   # role: fsp01 -- receives: fsp, io, docker-compose.yml, models/
+# Script run on the target machine to load the image archives and start compose
+LOAD_AND_START_SCRIPT="${SCRIPT_DIR}/load-and-start.sh"
 
-# Persistent clone, reused across runs instead of re-cloning every time
-CLONE_DIR="${CLONE_DIR:-${TMPDIR:-/tmp}/iec61850-websocket-clone}"
+# The machines. Each one receives the image archives listed here, plus
+# modules/<machine>/docker-compose.yml and, if present, modules/<machine>/models/.
+MACHINES=(so fsp01)
+declare -A MACHINE_HOST=(
+  [so]="${SO_HOST:-192.168.100.97}"
+  [fsp01]="${FSP01_HOST:-192.168.100.98}"
+)
+declare -A MACHINE_IMAGES=(
+  [so]="rti-so rti-io"
+  [fsp01]="rti-fsp rti-io"
+)
 
-# --- Export directory (ephemeral) ---------------------------------------
-EXPORT_DIR="$(mktemp -d -t rti-exports-XXXXXX)"
-echo "Using export directory: ${EXPORT_DIR}"
-
-cleanup() {
-  echo "Cleaning up ${EXPORT_DIR}"
-  rm -rf "${EXPORT_DIR}"
-}
-trap cleanup EXIT
-
-# --- Clone (first run) or update (subsequent runs) -----------------------
-if [ -d "${CLONE_DIR}/.git" ]; then
-  echo "Reusing existing clone at ${CLONE_DIR}, updating..."
-  git -C "${CLONE_DIR}" fetch origin "${BRANCH}"
-  git -C "${CLONE_DIR}" checkout "${BRANCH}"
-  git -C "${CLONE_DIR}" reset --hard "origin/${BRANCH}"
-else
-  echo "No existing clone found, cloning into ${CLONE_DIR}..."
-  git clone "${REPO_URL}" "${CLONE_DIR}"
-  git -C "${CLONE_DIR}" checkout "${BRANCH}"
-fi
-
-FSP_DOCKERFILE="${CLONE_DIR}/${FSP_DOCKERFILE_REL}"
-SO_DOCKERFILE="${CLONE_DIR}/${SO_DOCKERFILE_REL}"
-IO_DOCKERFILE="${CLONE_DIR}/${IO_DOCKERFILE_REL}"
-
-cd "${CLONE_DIR}/${EXAMPLE_SUBDIR}"
-
-# --- Register QEMU emulation for cross-arch builds (idempotent) ------------
-if [ ! -e /proc/sys/fs/binfmt_misc/qemu-aarch64 ]; then
-  echo "Registering QEMU binfmt handlers for cross-arch builds..."
-  docker run --privileged --rm tonistiigi/binfmt --install arm64
-fi
-
-# --- Set up a buildx builder capable of multi-arch builds ------------------
-if ! docker buildx inspect "${BUILDX_BUILDER}" >/dev/null 2>&1; then
-  echo "Creating buildx builder ${BUILDX_BUILDER}..."
-  docker buildx create --name "${BUILDX_BUILDER}" --driver docker-container
-fi
-docker buildx use "${BUILDX_BUILDER}"
-docker buildx inspect --bootstrap >/dev/null
-
-# --- Build arm64/v8 images for fsp, so and io (the only arch the pis run) --
-build_arch() {
-  local dockerfile="$1" context="$2" platform="$3" tag="$4"
-  echo "Building ${tag} for ${platform}..."
-  docker buildx build --platform "${platform}" \
-    -f "${dockerfile}" -t "${tag}" --load "${context}"
+usage() {
+  echo "Usage: $(basename "$0") [--start] [machine ...]   (no machines: all)" >&2
+  echo "       $(basename "$0") --list" >&2
+  echo "Machines: ${MACHINES[*]}" >&2
+  exit "${1:-1}"
 }
 
-# fsp and so build from the repo root (shared uv.lock, ws61850 core in src/);
-# io builds from its own module directory
-IO_CONTEXT="${CLONE_DIR}/${EXAMPLE_SUBDIR}/modules/io"
+list_machines() {
+  for m in "${MACHINES[@]}"; do
+    printf '%-8s %s@%s  images: %s\n' \
+      "${m}" "${TARGET_USER}" "${MACHINE_HOST[${m}]}" "${MACHINE_IMAGES[${m}]}"
+  done
+}
 
-build_arch "${FSP_DOCKERFILE}" "${CLONE_DIR}" "${PLATFORM_ARM64V8}" "${IMAGE_FSP}:arm64v8"
-build_arch "${SO_DOCKERFILE}" "${CLONE_DIR}" "${PLATFORM_ARM64V8}" "${IMAGE_SO}:arm64v8"
-build_arch "${IO_DOCKERFILE}" "${IO_CONTEXT}" "${PLATFORM_ARM64V8}" "${IMAGE_IO}:arm64v8"
+# --- Arguments ----------------------------------------------------------
+START=false
+SELECTED=()
+for arg in "$@"; do
+  case "${arg}" in
+    -h|--help) usage 0 ;;
+    --list) list_machines; exit 0 ;;
+    --start) START=true ;;
+    -*) echo "Unknown option: ${arg}" >&2; usage ;;
+    *)
+      if [ -z "${MACHINE_HOST[${arg}]+x}" ]; then
+        echo "Unknown machine: ${arg}" >&2
+        usage
+      fi
+      SELECTED+=("${arg}")
+      ;;
+  esac
+done
+[ ${#SELECTED[@]} -eq 0 ] && SELECTED=("${MACHINES[@]}")
 
-# --- Tag the arm64/v8 images with the netbeheer-nederland base name --------
-docker tag "${IMAGE_FSP}:arm64v8" "${IMAGE_FSP_TAGGED}"
-docker tag "${IMAGE_SO}:arm64v8" "${IMAGE_SO_TAGGED}"
-docker tag "${IMAGE_IO}:arm64v8" "${IMAGE_IO_TAGGED}"
+# --- Check everything is in place before touching any machine -------------
+missing=()
+for m in "${SELECTED[@]}"; do
+  for image in ${MACHINE_IMAGES[${m}]}; do
+    [ -f "${RTI_IMAGE_DIR}/${image}.tar.gz" ] || missing+=("${RTI_IMAGE_DIR}/${image}.tar.gz")
+  done
+  [ -f "${REPO_ROOT}/modules/${m}/docker-compose.yml" ] \
+    || missing+=("${REPO_ROOT}/modules/${m}/docker-compose.yml")
+done
+if [ ${#missing[@]} -gt 0 ]; then
+  echo "Missing files (run scripts/build-rti-demo.sh first for the images):" >&2
+  printf '  %s\n' "${missing[@]}" | sort -u >&2
+  exit 1
+fi
 
-# --- Export arm64/v8 images to tar.gz (only arch that ships to the pis) ----
-FSP_TAR="${EXPORT_DIR}/${IMAGE_FSP}.tar.gz"
-SO_TAR="${EXPORT_DIR}/${IMAGE_SO}.tar.gz"
-IO_TAR="${EXPORT_DIR}/${IMAGE_IO}.tar.gz"
+# --- Deploy ---------------------------------------------------------------
+deploy_machine() {
+  local m="$1"
+  local target="${TARGET_USER}@${MACHINE_HOST[${m}]}"
+  local files=()
 
-echo "Exporting ${IMAGE_FSP_TAGGED} (arm64/v8)..."
-docker save "${IMAGE_FSP_TAGGED}" | gzip > "${FSP_TAR}"
+  for image in ${MACHINE_IMAGES[${m}]}; do
+    files+=("${RTI_IMAGE_DIR}/${image}.tar.gz")
+  done
+  files+=("${REPO_ROOT}/modules/${m}/docker-compose.yml" "${LOAD_AND_START_SCRIPT}")
+  [ -d "${REPO_ROOT}/modules/${m}/models" ] && files+=("${REPO_ROOT}/modules/${m}/models")
 
-echo "Exporting ${IMAGE_SO_TAGGED} (arm64/v8)..."
-docker save "${IMAGE_SO_TAGGED}" | gzip > "${SO_TAR}"
+  echo "=== ${m} (${target}:${TARGET_DIR})"
+  # scp needs the target directory to exist when copying several files
+  ssh "${target}" mkdir -p "${TARGET_DIR}"
+  scp -r "${files[@]}" "${target}:${TARGET_DIR}"
 
-echo "Exporting ${IMAGE_IO_TAGGED} (arm64/v8)..."
-docker save "${IMAGE_IO_TAGGED}" | gzip > "${IO_TAR}"
+  if ${START}; then
+    echo "Loading images and starting compose on ${m}..."
+    ssh "${target}" "cd ${TARGET_DIR} && chmod +x load-and-start.sh && ./load-and-start.sh"
+  fi
+}
 
-# --- Copy images, role compose file and load-and-start script to target machines ------------------
-# scp needs the target directory to exist when copying several files
-# so machine gets: so, io, modules/so/docker-compose.yml, load-and-start.sh
-echo "Copying ${IMAGE_SO}, ${IMAGE_IO}, so docker-compose.yml and load-and-start.sh to so machine (${MACHINE_SO}:${TARGET_DIR})..."
-ssh "${MACHINE_SO}" mkdir -p "${TARGET_DIR}"
-scp "${SO_TAR}" "${IO_TAR}" "${SO_MODULE_COMPOSE}" "${LOAD_AND_START_SCRIPT}" "${MACHINE_SO}:${TARGET_DIR}"
+for m in "${SELECTED[@]}"; do
+  deploy_machine "${m}"
+done
 
-# fsp01 machine gets: fsp, io, modules/fsp01/docker-compose.yml, models/, load-and-start.sh
-echo "Copying ${IMAGE_FSP}, ${IMAGE_IO}, fsp01 docker-compose.yml, models and load-and-start.sh to fsp01 machine (${MACHINE_FSP01}:${TARGET_DIR})..."
-ssh "${MACHINE_FSP01}" mkdir -p "${TARGET_DIR}"
-scp -r "${FSP_TAR}" "${IO_TAR}" "${FSP01_MODULE_COMPOSE}" "${FSP01_MODULE_MODELS}" "${LOAD_AND_START_SCRIPT}" "${MACHINE_FSP01}:${TARGET_DIR}"
-
-echo "On each target machine, run: chmod +x load-and-start.sh && ./load-and-start.sh"
+if ! ${START}; then
+  echo "On each target machine, run: cd ${TARGET_DIR} && chmod +x load-and-start.sh && ./load-and-start.sh"
+  echo "(or re-run with --start to do this over ssh)"
+fi
 
 echo "Done."
