@@ -1,0 +1,9 @@
+RTI-SO {{ include "rti-so.fullname" . }}{{ if .Values.io.enabled }}, with IO sidecar{{ end }}.
+
+In the cluster:
+  API:       http://{{ include "rti-so.fullname" . }}.{{ .Release.Namespace }}.svc:{{ .Values.port }}
+  WebSocket: ws://{{ include "rti-so.fullname" . }}.{{ .Release.Namespace }}.svc:{{ .Values.websocketPort }}
+
+Check it:
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "rti-so.fullname" . }} {{ .Values.port }}
+  curl http://localhost:{{ .Values.port }}/api/status

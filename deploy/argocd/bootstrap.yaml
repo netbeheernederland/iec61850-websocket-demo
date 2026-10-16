@@ -1,0 +1,21 @@
+# The one Application to create by hand (kubectl apply -n argocd -f ...).
+# It syncs deploy/argocd/apps: the rti-demo AppProject and the ApplicationSets
+# that create one Application per installation in deploy/installations/.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: rti-demo
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: git@gitlab.apps.mypeters.eu:architecture/iec61850-websocket-demo.git
+    targetRevision: main
+    path: deploy/argocd/apps
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

@@ -1,0 +1,157 @@
+{{- $modelFile := include "rti-fsp.modelFile" . }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "rti-fsp.fullname" . }}
+  labels:
+    {{- include "rti-fsp.labels" . | nindent 4 }}
+spec:
+  # One FSP per control point, and the IO sidecar owns the Pi's hardware:
+  # never run two pods of a release, not even during a rollout.
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "rti-fsp.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        {{- if $modelFile }}
+        # Restart the pod when the model changes
+        checksum/model: {{ include "rti-fsp.modelContent" . | sha256sum }}
+        {{- end }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "rti-fsp.labels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.io.enabled }}
+      hostIPC: true
+      {{- end }}
+      containers:
+        - name: rti-fsp
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: PORT
+              value: {{ .Values.port | quote }}
+            - name: CP
+              value: {{ .Values.cp | quote }}
+            - name: LOG_LEVEL
+              value: {{ .Values.logLevel | quote }}
+            - name: MODELPATH
+              value: {{ if $modelFile }}{{ printf "/models/%s" $modelFile | quote }}{{ else }}""{{ end }}
+            {{- if .Values.io.enabled }}
+            # The IO plugin in the image reaches the IO sidecar, which writes
+            # input changes back to ACSI_BASE_URL.
+            - name: IO_URL
+              value: "http://localhost:{{ .Values.io.port }}"
+            - name: ACSI_BASE_URL
+              value: "http://localhost:{{ .Values.port }}"
+            {{- end }}
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          ports:
+            - name: acsi
+              containerPort: {{ .Values.port }}
+              protocol: TCP
+          startupProbe:
+            httpGet:
+              path: /api/status
+              port: acsi
+            periodSeconds: 5
+            failureThreshold: 24
+          livenessProbe:
+            httpGet:
+              path: /api/status
+              port: acsi
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /api/status
+              port: acsi
+            periodSeconds: 10
+            timeoutSeconds: 10
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- if or $modelFile .Values.certs.secretName }}
+          volumeMounts:
+            {{- if $modelFile }}
+            - name: models
+              mountPath: /models
+              readOnly: true
+            {{- end }}
+            {{- if .Values.certs.secretName }}
+            - name: certs
+              mountPath: /certs
+              readOnly: true
+            {{- end }}
+          {{- end }}
+        {{- if .Values.io.enabled }}
+        - name: rti-io
+          image: "{{ .Values.io.image.repository }}:{{ .Values.io.image.tag }}"
+          imagePullPolicy: {{ .Values.io.image.pullPolicy }}
+          env:
+            - name: PORT
+              value: {{ .Values.io.port | quote }}
+          ports:
+            - name: io
+              containerPort: {{ .Values.io.port }}
+              protocol: TCP
+          # GPIO, I2C and SPI: a privileged container sees the host's /dev
+          securityContext:
+            privileged: true
+            capabilities:
+              add: ["SYS_RAWIO"]
+          livenessProbe:
+            httpGet:
+              path: /api/io/health
+              port: io
+            initialDelaySeconds: 20
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          {{- with .Values.io.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+        {{- end }}
+      {{- if or $modelFile .Values.certs.secretName }}
+      volumes:
+        {{- if $modelFile }}
+        - name: models
+          configMap:
+            name: {{ include "rti-fsp.fullname" . }}-model
+        {{- end }}
+        {{- if .Values.certs.secretName }}
+        - name: certs
+          secret:
+            secretName: {{ .Values.certs.secretName }}
+        {{- end }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

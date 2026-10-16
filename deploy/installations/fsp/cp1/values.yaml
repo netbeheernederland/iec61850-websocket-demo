@@ -1,0 +1,26 @@
+# rti-fsp-cp1. Defaults: deploy/helm/rti-fsp/values.yaml
+
+image:
+  tag: latest            # pin sha-<commit> to control rollouts
+
+imagePullSecrets:
+  - name: ghcr-pull
+
+cp: cp1
+port: 5001
+
+# Bundled in deploy/helm/rti-fsp/models/
+model:
+  file: model_1.py
+
+# k3s ServiceLB: port 5001 on the nodes' IPs, like the compose files' host
+# ports, for the BFF outside the cluster
+service:
+  type: LoadBalancer
+
+# The IO server on the same Pi (off, as in modules/fsp/docker-compose.yml);
+# enabling it needs the pod pinned to that Pi
+io:
+  enabled: false
+#nodeSelector:
+#  kubernetes.io/hostname: rti-pi5

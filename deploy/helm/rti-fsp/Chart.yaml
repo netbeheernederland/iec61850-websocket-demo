@@ -1,0 +1,8 @@
+apiVersion: v2
+name: rti-fsp
+description: >-
+  RTI-FSP (ACSI server) for one control point, optionally with its IO server
+  as a sidecar. Install once per control point; each release is independent.
+type: application
+version: 0.1.0
+appVersion: "latest"

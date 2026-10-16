@@ -1,0 +1,5 @@
+# Where ArgoCD installs this installation. The directory name is the
+# installation's name: lower case, digits and -, as in a DNS label.
+destination:
+  server: https://kubernetes.default.svc
+  namespace: rti-demo

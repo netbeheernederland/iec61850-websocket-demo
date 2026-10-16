@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "rti-so.fullname" . }}
+  labels:
+    {{- include "rti-so.labels" . | nindent 4 }}
+  {{- with .Values.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.service.type }}
+  selector:
+    {{- include "rti-so.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: api
+      port: {{ .Values.port }}
+      targetPort: api
+      protocol: TCP
+      {{- if and (eq .Values.service.type "NodePort") .Values.service.nodePort }}
+      nodePort: {{ .Values.service.nodePort }}
+      {{- end }}
+    - name: websocket
+      port: {{ .Values.websocketPort }}
+      targetPort: websocket
+      protocol: TCP
+      {{- if and (eq .Values.service.type "NodePort") .Values.service.websocketNodePort }}
+      nodePort: {{ .Values.service.websocketNodePort }}
+      {{- end }}

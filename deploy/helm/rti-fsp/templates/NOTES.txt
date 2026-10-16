@@ -1,0 +1,7 @@
+RTI-FSP {{ include "rti-fsp.fullname" . }}: control point {{ .Values.cp }}, model {{ include "rti-fsp.modelFile" . | default "built-in" }}{{ if .Values.io.enabled }}, with IO sidecar{{ end }}.
+
+In the cluster: http://{{ include "rti-fsp.fullname" . }}.{{ .Release.Namespace }}.svc:{{ .Values.port }}
+
+Check it:
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "rti-fsp.fullname" . }} {{ .Values.port }}
+  curl http://localhost:{{ .Values.port }}/api/status

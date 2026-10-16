@@ -1,0 +1,66 @@
+# Default values for rti-so. One release is one SO, one pod.
+# Per-installation values live in deploy/installations/so/<name>/.
+
+nameOverride: ""
+fullnameOverride: ""
+
+image:
+  repository: ghcr.io/netbeheer-nederland/iec61850-websocket/rti-so
+  # Pin a build (sha-<commit>) per installation: ArgoCD only rolls out a new
+  # image when this value changes.
+  tag: latest
+  pullPolicy: IfNotPresent
+
+# GHCR packages are private by default: name a docker-registry secret with a
+# read:packages token, created in the release's namespace beforehand.
+imagePullSecrets: []
+#  - name: ghcr-pull
+
+# API port (PORT)
+port: 5000
+# WebSocket port. The image listens on 8765; this only sets the container
+# and Service port, it is not passed to the SO.
+websocketPort: 8765
+logLevel: debug
+
+# Extra environment variables for the SO container
+extraEnv: []
+#  - name: PYTHONUNBUFFERED
+#    value: "1"
+
+# Mount a secret with the mTLS certificates (ca.pem, server.pem, ...) at
+# /certs, as the cert-generator volume is in docker-compose. Empty: none.
+certs:
+  secretName: ""
+
+service:
+  # ClusterIP for in-cluster clients; NodePort or LoadBalancer to reach the
+  # SO from the BFF outside the cluster.
+  type: ClusterIP
+  # Only for type NodePort; empty lets Kubernetes choose
+  nodePort: ""
+  websocketNodePort: ""
+  annotations: {}
+
+# The IO server (rti-io) as a sidecar: same pod, so same node as the SO,
+# reached on localhost. Needs a privileged container on a Pi with the GPIO,
+# I2C and SPI devices; the namespace must allow privileged pods.
+io:
+  enabled: false
+  image:
+    repository: ghcr.io/netbeheer-nederland/iec61850-websocket/rti-io
+    tag: latest
+    pullPolicy: IfNotPresent
+  port: 8000
+  resources: {}
+
+resources: {}
+
+# The images are built for arm64 only (the Pis)
+nodeSelector:
+  kubernetes.io/arch: arm64
+tolerations: []
+affinity: {}
+
+podAnnotations: {}
+podLabels: {}

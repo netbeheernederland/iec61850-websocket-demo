@@ -1,0 +1,12 @@
+{{- $modelFile := include "rti-fsp.modelFile" . }}
+{{- if $modelFile }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "rti-fsp.fullname" . }}-model
+  labels:
+    {{- include "rti-fsp.labels" . | nindent 4 }}
+data:
+  {{ $modelFile }}: |-
+    {{- include "rti-fsp.modelContent" . | nindent 4 }}
+{{- end }}

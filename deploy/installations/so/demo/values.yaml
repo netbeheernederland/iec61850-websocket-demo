@@ -1,0 +1,22 @@
+# rti-so-demo. Defaults: deploy/helm/rti-so/values.yaml
+
+image:
+  tag: latest            # pin sha-<commit> to control rollouts
+
+imagePullSecrets:
+  - name: ghcr-pull
+
+port: 5000
+
+# k3s ServiceLB: ports 5000 and 8765 on the nodes' IPs, like the compose
+# files' host ports, for the BFF outside the cluster
+service:
+  type: LoadBalancer
+
+# As in modules/so/docker-compose.yml: the IO server on the same Pi
+io:
+  enabled: true
+
+# With IO enabled, pin the pod to the Pi that has the hardware
+#nodeSelector:
+#  kubernetes.io/hostname: rti-pi5

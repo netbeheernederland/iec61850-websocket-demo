@@ -1,0 +1,25 @@
+# Limits the rti-demo Applications to this repository and to namespaces
+# named rti-*, on any cluster registered in ArgoCD.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: rti-demo
+  namespace: argocd
+spec:
+  description: RTI demo SO and FSP installations
+  sourceRepos:
+    - git@gitlab.apps.mypeters.eu:architecture/iec61850-websocket-demo.git
+  destinations:
+    - server: "*"
+      namespace: "rti-*"
+  # CreateNamespace=true needs to create the installation's namespace
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+  namespaceResourceWhitelist:
+    - group: ""
+      kind: Service
+    - group: ""
+      kind: ConfigMap
+    - group: apps
+      kind: Deployment
