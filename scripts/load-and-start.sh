@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Runs on the target machine (so / fsp01), in the directory that received
-# the *.tar.gz image archives and docker-compose.yml from deploy-rti-demo.sh.
+# Runs on the target machine (any role), in the directory that received
+# the *.tar.gz image archives, docker-compose.yml and .env from deploy-rti-demo.sh.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
