@@ -41,13 +41,10 @@ spec:
               value: {{ .Values.port | quote }}
             - name: LOG_LEVEL
               value: {{ .Values.logLevel | quote }}
-            {{- if .Values.io.enabled }}
-            # The IO plugin in the image reaches the IO sidecar, which writes
-            # input changes back to ACSI_BASE_URL.
-            - name: IO_URL
-              value: "http://localhost:{{ .Values.io.port }}"
-            - name: ACSI_BASE_URL
-              value: "http://localhost:{{ .Values.port }}"
+            {{- with include "rti-so.pluginsJson" . }}
+            # The plugins it connects to (upstream decision 0029)
+            - name: PLUGINS
+              value: {{ . | quote }}
             {{- end }}
             {{- with .Values.extraEnv }}
             {{- toYaml . | nindent 12 }}

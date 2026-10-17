@@ -33,3 +33,18 @@ app.kubernetes.io/part-of: rti-demo
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
+{{/*
+The plugin configuration (PLUGINS) as JSON: the IO sidecar as io, then
+.Values.plugins. Empty when there are none.
+*/}}
+{{- define "rti-so.pluginsJson" -}}
+{{- $plugins := list }}
+{{- if .Values.io.enabled }}
+{{- $plugins = append $plugins (dict "name" "io" "url" (printf "http://localhost:%v/plugin" .Values.io.port) "settings" .Values.io.settings) }}
+{{- end }}
+{{- $plugins = concat $plugins .Values.plugins }}
+{{- if $plugins }}
+{{- $hostUrl := .Values.pluginHostUrl | default (printf "http://localhost:%v" .Values.port) }}
+{{- dict "host_url" $hostUrl "plugins" $plugins | toJson }}
+{{- end }}
+{{- end }}

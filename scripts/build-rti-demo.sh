@@ -59,20 +59,22 @@ else
 fi
 
 # Dockerfile and build context per image, as declared in
-# examples/rti-demo/docker-compose.yml. fsp and so build from the repo root
-# (shared uv.lock, ws61850 core in src/); io builds from its own module
-# directory. Paths are absolute: buildx resolves -f against the shell's cwd,
+# examples/rti-demo/docker-compose.yml and, for io, in the IO plugin's own
+# examples/rti-plugins/rpi_io/docker-compose.yaml. fsp and so build from the
+# repo root (shared uv.lock, ws61850 core in src/); io builds from its plugin
+# project. Paths are absolute: buildx resolves -f against the shell's cwd,
 # not the build context.
 EXAMPLE_DIR="${CLONE_DIR}/${EXAMPLE_SUBDIR}"
+IO_PLUGIN_DIR="${CLONE_DIR}/examples/rti-plugins/rpi_io"
 declare -A DOCKERFILE=(
   [fsp]="${EXAMPLE_DIR}/modules/fsp/docker/Dockerfile"
   [so]="${EXAMPLE_DIR}/modules/so/docker/Dockerfile"
-  [io]="${EXAMPLE_DIR}/modules/io/docker/Dockerfile"
+  [io]="${IO_PLUGIN_DIR}/docker/Dockerfile"
 )
 declare -A CONTEXT=(
   [fsp]="${CLONE_DIR}"
   [so]="${CLONE_DIR}"
-  [io]="${EXAMPLE_DIR}/modules/io"
+  [io]="${IO_PLUGIN_DIR}"
 )
 
 # --- Register QEMU emulation for cross-arch builds (idempotent) ------------

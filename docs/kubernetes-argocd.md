@@ -80,9 +80,10 @@ one **Service**. The FSP chart adds a **ConfigMap** with the model.
 
 See each chart's `values.yaml` for all values and their comments.
 
-**IO sidecar.** With `io.enabled: true` the IO server (`rti-io`) runs in the
-same pod: on the same node, reached on `localhost`, and `IO_URL` and
-`ACSI_BASE_URL` are set as in the compose files. The IO container is
+**IO sidecar.** With `io.enabled: true` the IO server (`rti-io`, port 9000)
+runs in the same pod: on the same node, and connected as the plugin `io` at
+`http://localhost:9000/plugin` (plugin API version 2, upstream decision 0029).
+`io.settings` are its settings, e.g. `write_inputs: false`. The IO container is
 privileged (GPIO, I2C, SPI) and the pod uses the host's IPC namespace. Pin the
 pod to the Pi with the hardware:
 
@@ -91,6 +92,20 @@ io:
   enabled: true
 nodeSelector:
   kubernetes.io/hostname: rti-pi5    # merged with the default kubernetes.io/arch
+```
+
+**Other plugins.** `plugins` lists more plugins to connect to, after `io`,
+as `{name, url, settings}`. The chart passes them, with `io`, to the SO or FSP
+as `PLUGINS`. A plugin outside the pod writes back to `host_url`, which is
+`http://localhost:<port>` unless `pluginHostUrl` is set: set it to the SO's or
+FSP's address as that plugin reaches it, for example its LoadBalancer address.
+
+```yaml
+plugins:
+  - name: display_st7789
+    url: http://192.168.0.226:8000/plugin
+    settings: {}
+pluginHostUrl: http://192.168.0.226:5001
 ```
 
 If the cluster enforces Pod Security Standards, label the namespace

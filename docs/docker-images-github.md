@@ -99,7 +99,7 @@ Dockerfiles and contexts are the ones that script uses:
 |-------|-------------------------------------------------------------|----------------------------------------------|
 | `fsp` | `examples/rti-demo/modules/fsp/docker/Dockerfile`           | repo root                                    |
 | `so`  | `examples/rti-demo/modules/so/docker/Dockerfile`            | repo root                                    |
-| `io`  | `examples/rti-demo/modules/io/docker/Dockerfile`            | `examples/rti-demo/modules/io`               |
+| `io`  | `examples/rti-plugins/rpi_io/docker/Dockerfile`             | `examples/rti-plugins/rpi_io`                |
 
 Run `scripts/build-rti-demo.sh` once first: it creates the clone (default
 `${TMPDIR:-/tmp}/iec61850-websocket-clone`), registers QEMU and creates the
@@ -119,7 +119,7 @@ docker buildx build --builder rti-builder --platform linux/arm64/v8 \
   --push "${CLONE_DIR}"
 ```
 
-For `io`, use its Dockerfile and `"${CLONE_DIR}/examples/rti-demo/modules/io"`
+For `io`, use its Dockerfile and `"${CLONE_DIR}/examples/rti-plugins/rpi_io"`
 as the context.
 
 The `org.opencontainers.image.source` label/annotation **links the package to
@@ -154,6 +154,7 @@ on:
     branches: [initial-refactor]
     paths:
       - "examples/rti-demo/**"
+      - "examples/rti-plugins/rpi_io/**"
       - "src/**"
       - "uv.lock"
       - ".github/workflows/rti-demo-images.yml"
@@ -178,8 +179,8 @@ jobs:
             dockerfile: examples/rti-demo/modules/so/docker/Dockerfile
             context: .
           - image: io
-            dockerfile: examples/rti-demo/modules/io/docker/Dockerfile
-            context: examples/rti-demo/modules/io
+            dockerfile: examples/rti-plugins/rpi_io/docker/Dockerfile
+            context: examples/rti-plugins/rpi_io
     steps:
       - uses: actions/checkout@v4
 
