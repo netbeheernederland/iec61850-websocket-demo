@@ -204,8 +204,6 @@ services:
       CP: cp2
       MODELPATH: /models/model_2.py
       LOG_LEVEL: debug
-      IO_URL: "http://192.168.0.226:8000"
-      ACSI_BASE_URL: "http://192.168.0.226:${FSP_PORT:-5005}"
     volumes:
       - ./modules/fsp02/models:/models
       - certs:/certs:ro
