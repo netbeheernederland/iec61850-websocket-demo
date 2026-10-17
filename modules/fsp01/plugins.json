@@ -1,0 +1,10 @@
+{
+  "host_url": "http://192.168.0.226:5001",
+  "plugins": [
+    {
+      "name": "display_st7789",
+      "url": "http://192.168.0.226:8000/plugin",
+      "settings": {}
+    }
+  ]
+}

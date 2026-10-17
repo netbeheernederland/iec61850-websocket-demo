@@ -162,8 +162,8 @@ services:
   rti-fsp01:
     image: ${RTI_IMAGE_REPO:-netbeheer-nederland/iec61850-websocket}/rti-fsp:${RTI_IMAGE_TAG:-latest}
     container_name: rti-fsp01
-#    ports:
-#      - "5001:5001"
+    ports:
+      - "5001:5001"
     depends_on:
       cert-generator:
         condition: service_completed_successfully
@@ -172,6 +172,10 @@ services:
       CP: cp1
       LOG_LEVEL: debug
       MODELPATH: "/models/model_1.py"
+      # The plugins it connects to: the dr-st7789v display, which needs
+      # model_1.py's LD0/DWMX1.WMaxSpt and LD0/MMXU1.TotW. host_url in the
+      # file is this FSP as the display reaches it: the published port 5001.
+      PLUGINS_FILE: /plugins/plugins.json
     networks:
       - rti-network
     labels:
@@ -181,14 +185,15 @@ services:
       - "rti.port=5001"
     volumes:
         - ./modules/fsp01/models:/models
+        - ./modules/fsp01/plugins.json:/plugins/plugins.json:ro
         - certs:/certs:ro
 
   # Second FSP instance
   rti-fsp02:
     image: ${RTI_IMAGE_REPO:-netbeheer-nederland/iec61850-websocket}/rti-fsp:${RTI_IMAGE_TAG:-latest}
     container_name: rti-fsp02
-#    ports:
-#      - "5005:5005"  # Map to different host port, same container port
+    ports:
+      - "5005:5005"  # Map to different host port, same container port
     depends_on:
       cert-generator:
         condition: service_completed_successfully
@@ -199,6 +204,8 @@ services:
       CP: cp2
       MODELPATH: /models/model_2.py
       LOG_LEVEL: debug
+      IO_URL: "http://192.168.0.226:8000"
+      ACSI_BASE_URL: "http://192.168.0.226:${FSP_PORT:-5005}"
     volumes:
       - ./modules/fsp02/models:/models
       - certs:/certs:ro
