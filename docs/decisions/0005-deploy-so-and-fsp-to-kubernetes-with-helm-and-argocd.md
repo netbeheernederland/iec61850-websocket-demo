@@ -30,7 +30,7 @@ can run side by side and be added, changed and removed reproducibly?
 ## Decision Drivers
 
 * **Growing number of SO and FSP installations per demo.** The scaling spec
-  (`docs/superpowers/specs/2026-09-20-compose-node-scaling-design.md`) targets
+  (`../specs/2026-09-20-compose-node-scaling-design.md`) targets
   tens of nodes. Every installation differs in control point, port, model and
   hardware, and today each one is configured by copying a block or a line.
 * **Manual, push-based rollout to the Pis.** `deploy-rti-demo.sh` copies

@@ -68,7 +68,7 @@ already used. `bff-server` was renamed to `rti-bff` across
   cross-file mismatch when adding a service.
 * Good, because it directly enables predictable name generation for the
   scaling work in
-  `docs/superpowers/specs/2026-09-20-compose-node-scaling-design.md` — a
+  `../specs/2026-09-20-compose-node-scaling-design.md` — a
   generator can construct `rti-<role><NN>` without a per-service exception
   table.
 * Neutral, because `modules/bff/` (the module/config directory) was

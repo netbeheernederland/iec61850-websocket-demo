@@ -84,7 +84,7 @@ differences" section) rather than by an automated check.
 ## More Information
 
 If the duplication in Consequences grows further (e.g. once
-`docs/superpowers/specs/2026-09-20-compose-node-scaling-design.md`'s
+`../specs/2026-09-20-compose-node-scaling-design.md`'s
 generator script exists), consider a follow-up ADR on whether to factor the
 shared generation logic (certs, `connections.json`) into a single script
 consumed by both targets, rather than parallel implementations.

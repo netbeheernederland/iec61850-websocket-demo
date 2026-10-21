@@ -81,7 +81,7 @@ and `setup/roles.env`'s `ROLE_TARBALLS`/`IMAGE_REF` maps, and by running
 ## More Information
 
 If the fleet grows to the "tens of nodes" scale referenced in
-`docs/superpowers/specs/2026-09-20-compose-node-scaling-design.md` (for the
+`../specs/2026-09-20-compose-node-scaling-design.md` (for the
 docker-compose target) and an equivalent scale-up is later wanted for the VM
 fleet, the per-VM-tarball-copy cost in the second "Bad" consequence above
 should be re-evaluated against standing up a local registry at that point.
