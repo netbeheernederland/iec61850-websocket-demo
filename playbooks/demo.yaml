@@ -5,7 +5,7 @@
 # config/models/model_1.py (cp1), FSP02 model_2.py (cp2). Open the HMI's
 # Traffic page, then:
 #
-#   uv run python -m playbooks.run playbooks/demo.yaml
+#   uv run playbooks/runner/run.py playbooks/demo.yaml
 #
 # Step reference: playbooks/README.md.
 

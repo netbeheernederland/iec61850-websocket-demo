@@ -7,13 +7,10 @@ SPDX-License-Identifier: Apache-2.0
 # Demo playbooks
 
 A playbook is a YAML (or JSON) file listing the steps of a demo with one SO
-and its FSPs. `runner/run.py` executes it through the BFF, the same way the HMI
-does, so the HMI's **Traffic** page shows each step as it happens: the link
-pulses, the timeline rows, the report values. Each step is checked as it
-runs.
-
-The same file runs as an integration test, so the demo you present is the
-demo the tests run.
+and its FSPs. The BFF runs it, whether you start it from the HMI or with
+`runner/run.py`, so the HMI's **Traffic** page shows each step as it happens:
+the link pulses, the timeline rows, the report values. Each step is checked
+as it runs.
 
 ## From the HMI
 
@@ -23,22 +20,24 @@ demo buttons into playbook steps, and Stop recording saves it. Built-in
 playbooks are this folder; saved ones live under `BFF_PLAYBOOKS_DIR`
 (`/config/playbooks` on the `bff-config` volume in `docker-compose.yml`). A
 recording is an ordinary playbook file - download it, drop it in here, and it
-runs the same from the CLI and as the test.
-
-The CLI imports the runner from the BFF package (`bff.playbook`), so run
-`uv sync --all-packages` (or `uv sync --package bff`) before using it.
+runs the same from the CLI.
 
 ## Running
 
 With the stack up (`docker compose up -d`) and the SO and FSPs registered
-with the BFF (HMI → Connections):
+with the BFF (HMI → Connections), from the repository root:
 
 ```bash
-cd examples/rti-demo
-uv run python -m playbooks.run playbooks/demo.yaml            # paced for an audience
-uv run python -m playbooks.run playbooks/demo.yaml --pace 0   # as fast as it goes
-uv run python -m playbooks.run playbooks/demo.yaml --steps 5-7
+uv run playbooks/runner/run.py playbooks/demo.yaml            # paced for an audience
+uv run playbooks/runner/run.py playbooks/demo.yaml --pace 0   # as fast as it goes
+uv run playbooks/runner/run.py playbooks/demo.yaml --steps 5-7
 ```
+
+The runner needs only uv; it declares its own dependencies (PyYAML,
+requests). It uploads the file to the BFF as a saved playbook named
+`cli-<name>` (`/api/playbooks`), runs it there, prints each step as it ends,
+and deletes the saved copy again. The run shows in the HMI's Playbook panel
+too. The BFF runs one playbook at a time; Ctrl+C stops the run.
 
 | Option | |
 |---|---|
@@ -48,15 +47,9 @@ uv run python -m playbooks.run playbooks/demo.yaml --steps 5-7
 | `--bff URL` | the BFF (default: the playbook's `bff`, else `http://localhost:3000`) |
 
 Each step prints a line, `[ 6/12] ✓ Reports come in at the SO · 5 report(s) from FSP02 (5.0s)`.
-The exit code is 0 when every step passed, 1 when one failed, and 2 when the
-playbook couldn't run at all (bad file, unknown FSP, BFF unreachable).
-
-As a test:
-
-```bash
-uv run pytest tests/integration -m integration -k playbook -q
-RTI_PLAYBOOK=playbooks/other.yaml uv run pytest tests/integration -m integration -k playbook -q
-```
+The exit code is 0 when every step passed, 1 when one failed or the run was
+stopped, and 2 when the playbook couldn't run at all (bad file, unknown FSP,
+BFF unreachable, another playbook already running).
 
 ## File
 
@@ -110,3 +103,8 @@ returned data, an operate the FSP carried out. `expect` changes that:
 | `fail` | the FSP refused it, e.g. an operate on an interlocked control |
 | `{reports: {fsp: FSP02, min: 3}}` | the SO received at least `min` reports from that FSP during the step (put it on a `wait`) |
 | `{linked: [FSP01, FSP02]}` / `{unlinked: FSP02}` | the SO has, or hasn't, associated those FSPs' cps |
+
+## Recording
+
+To make a video of a playbook run on the HMI's Traffic page, for showing the
+demo offline, see [docs/recording-the-demo.md](../docs/recording-the-demo.md).

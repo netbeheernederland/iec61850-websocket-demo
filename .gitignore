@@ -9,3 +9,6 @@
 
 # Image archives from scripts/build-rti-demo.sh
 dist/
+
+# Python
+__pycache__/
