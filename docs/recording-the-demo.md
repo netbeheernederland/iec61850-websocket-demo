@@ -15,8 +15,10 @@ recording, runs a playbook from this repo's `playbooks/` folder (see
 The playbook runs in the BFF, through the same runner as
 `playbooks/runner/run.py`. The script uploads it with the BFF's
 `/api/playbooks` API as a saved playbook named `record-<name>`, runs it, and
-deletes it again afterwards. This is the same as running it from the HMI, so
-the HMI's Playbook panel shows each step as it goes. Nothing from the
+deletes it again afterwards. This is the same as running it from the HMI.
+Before recording, the script collapses the HMI's Playbook panel, which would
+otherwise list the run's steps, and clears the Timeline, so the video shows
+only the demo itself. Nothing from the
 `iec61850-websocket` repository is needed.
 
 ## Prerequisites
@@ -91,6 +93,8 @@ uv run scripts/record_demo.py \
 | `--lead-in SECONDS` | `3` | wait before the playbook starts |
 | `--tail SECONDS` | `4` | wait after the playbook ends |
 | `--headed` | off | show the browser |
+| `--playbook-panel` | `collapsed` | the HMI's Playbook panel in the video: `collapsed`, `hidden` or `open` |
+| `--keep-timeline` | off | keep the HMI's Timeline as it is instead of clearing it first |
 | `--no-mp4` | off | keep only the `.webm` |
 | `--bff URL` | the playbook's `bff`, else `http://localhost:3000` | BFF that runs the playbook |
 | `--pace 2s` | the playbook's `pace` | pause between steps |

@@ -12,3 +12,6 @@ dist/
 
 # Python
 __pycache__/
+
+# Videos from scripts/record_demo.py
+recordings/
