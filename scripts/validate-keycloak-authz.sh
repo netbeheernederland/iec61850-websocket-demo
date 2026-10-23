@@ -7,7 +7,7 @@ set -euo pipefail
 # Configuration
 # ------------------------------------------------------------
 
-KEYCLOAK_URL="${KEYCLOAK_URL:-http://localhost:8081}"
+KEYCLOAK_URL="${KEYCLOAK_URL:-http://localhost:8080}"
 REALM="${REALM:-iec61850-test}"
 
 WS_CLIENT_ID="${WS_CLIENT_ID:-ws-client}"

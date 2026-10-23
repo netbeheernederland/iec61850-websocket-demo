@@ -67,17 +67,17 @@ services:
     container_name: keycloak-dev
     command: [ "start-dev", "--import-realm" ]
     ports:
-      - "8081:8081"
+      - "8080:8080"
       - "8443:8443"
     depends_on:
       cert-generator:
         condition: service_completed_successfully
     environment:
       KC_HOSTNAME: localhost
-      # HTTP on 8081, inside and outside the container: 8080 is the rti-demo HMI.
-      # One port everywhere keeps the token issuer the same for the host and
-      # for containers (http://localhost:8081/realms/...).
-      KC_HTTP_PORT: 8081
+      # HTTP on 8080, inside and outside the container. One port everywhere
+      # keeps the token issuer the same for the host and for containers
+      # (http://localhost:8080/realms/...).
+      KC_HTTP_PORT: 8080
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin
       KC_HTTPS_CERTIFICATE_FILE: /certs/keycloak.pem

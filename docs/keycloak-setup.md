@@ -5,7 +5,7 @@ This guide configures Keycloak so that a machine client can operate on **multipl
 The examples assume:
 
 ```text
-Keycloak:        http://localhost:8081
+Keycloak:        http://localhost:8080
 Realm:           iec61850-test
 Calling client:  ws-client
 Resource server: iec61850-api
@@ -381,31 +381,41 @@ This means no manual role assignment in the Keycloak Admin Console is necessary 
 
 # 4. Docker Compose
 
-Mount the realm into Keycloak's import directory:
+The `keycloak` service in this repository's `docker-compose.yml` mounts
+`modules/keycloak/` (which holds `iec61850-test-realm.json`) into Keycloak's
+import directory:
 
 ```yaml
 services:
-
   keycloak:
-    image: quay.io/keycloak/keycloak:latest
-
-    command:
-      - start-dev
-      - --import-realm
-      - --http-port=8080
-
+    image: quay.io/keycloak/keycloak:26.0
+    container_name: keycloak-dev
+    command: [ "start-dev", "--import-realm" ]
     ports:
-      - "8081:8080"
-
+      - "8080:8080"
+      - "8443:8443"
+    depends_on:
+      cert-generator:
+        condition: service_completed_successfully
     environment:
+      KC_HOSTNAME: localhost
+      # HTTP on 8080, inside and outside the container. One port everywhere
+      # keeps the token issuer the same for the host and for containers
+      # (http://localhost:8080/realms/...).
+      KC_HTTP_PORT: 8080
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin
-
-      WS_CLIENT_SECRET: K4Nrd14seXG52J3xpnIqfMyILTJJu3VI
-
+      KC_HTTPS_CERTIFICATE_FILE: /certs/keycloak.pem
+      KC_HTTPS_CERTIFICATE_KEY_FILE: /certs/keycloak-key.pem
     volumes:
-      - ./iec61850-test-realm.json:/opt/keycloak/data/import/iec61850-test-realm.json:ro
+      - ./modules/keycloak:/opt/keycloak/data/import
+      - certs:/certs:ro
 ```
+
+Keep the host and container HTTP ports the same. With a mapping such as
+`8081:8080`, tokens fetched from the host carry a different issuer
+(`http://localhost:8081/...`) from the one Keycloak advertises inside the
+network, and issuer validation fails.
 
 Start Keycloak:
 
@@ -416,7 +426,7 @@ docker compose up -d
 The realm should become available at:
 
 ```text
-http://localhost:8081/realms/iec61850-test
+http://localhost:8080/realms/iec61850-test
 ```
 
 ## Existing realms
@@ -439,14 +449,14 @@ Verify that the OIDC discovery endpoint exists:
 curl \
   --fail \
   --silent \
-  http://localhost:8081/realms/iec61850-test/.well-known/openid-configuration |
+  http://localhost:8080/realms/iec61850-test/.well-known/openid-configuration |
 jq '.issuer'
 ```
 
 Expected:
 
 ```json
-"http://localhost:8081/realms/iec61850-test"
+"http://localhost:8080/realms/iec61850-test"
 ```
 
 ---
@@ -456,7 +466,7 @@ Expected:
 Define:
 
 ```bash
-export KEYCLOAK_URL='http://localhost:8081'
+export KEYCLOAK_URL='http://localhost:8080'
 export REALM='iec61850-test'
 
 export WS_CLIENT_ID='ws-client'
