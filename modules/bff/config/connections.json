@@ -1,6 +1,6 @@
 [
   {
-    "id": 3,
+    "id": "0ad03a88-7294-4863-ae15-67d15e864303",
     "name": "SO",
     "host": "rti-so",
     "port": 5000,
@@ -10,20 +10,28 @@
     "auto_discovered": false,
     "created_at": "2026-09-03T15:40:40.657045",
     "OAuth": {
-      "certificate_endpoint": "",
-      "auth_server_ca": "",
-      "realm": "",
-      "token_endpoint": "",
-      "client_id": "",
-      "client_secret": "",
+      "certificate_endpoint": "https://keycloak:8443/realms/iec61850-test/protocol/openid-connect/certs",
+      "auth_server_ca": "file:keycloak.pem",
+      "realm": "iec61850-test",
       "enable_token_refresh": false,
-      "idp_server": ""
+      "idp_server": "KEYCLOAK",
+      "enable_oauth": false,
+      "token_issuer": "https://localhost:8443/realms/iec61850-test"
     },
-    "status": "connected"
+    "status": "connected",
+    "ws_port": 8765,
+    "endpoint": "",
+    "TLS": {
+      "enable_tls": true,
+      "tls_version": "TLSv1_3",
+      "server_key": "file:server-key.pem",
+      "server_cert": "file:server.pem",
+      "server_ca": null
+    }
   },
   {
-    "id": 2,
-    "name": "SP01",
+    "id": "8df5c591-94d1-4cf2-8b85-40bd50ee614d",
+    "name": "FSP01",
     "host": "rti-fsp01",
     "port": 5001,
     "type": "RTI-FSP",
@@ -32,22 +40,29 @@
     "auto_discovered": false,
     "created_at": "2026-09-03T15:41:29.188006",
     "OAuth": {
-      "certificate_endpoint": "",
-      "auth_server_ca": "",
-      "realm": "",
-      "token_endpoint": "",
-      "client_id": "",
-      "client_secret": "",
-      "enable_token_refresh": false,
-      "idp_server": "",
-      "token_issuer": ""
+      "auth_server_ca": "file:ca.pem",
+      "realm": "iec61850-test",
+      "token_endpoint": "https://keycloak:8443/realms/iec61850-test/protocol/openid-connect/token",
+      "client_id": "ws-client",
+      "client_secret": "K4Nrd14seXG52J3xpnIqfMyILTJJu3VI",
+      "enable_token_refresh": true,
+      "idp_server": "KEYCLOAK",
+      "enable_oauth": false
     },
     "status": "connected",
-    "endpoint": ""
+    "endpoint": "",
+    "cp": "",
+    "TLS": {
+      "enable_tls": true,
+      "tls_version": "TLSv1_3",
+      "server_key": null,
+      "server_cert": null,
+      "server_ca": "file:ca.pem"
+    }
   },
   {
-    "id": 3,
-    "name": "SP02",
+    "id": "5f97efba-420e-4937-a56b-d6668f04669e",
+    "name": "FSP02",
     "host": "rti-fsp02",
     "port": 5005,
     "type": "RTI-FSP",
@@ -64,6 +79,30 @@
       "client_secret": "",
       "enable_token_refresh": false,
       "idp_server": ""
+    },
+    "status": "connected",
+    "cp": "",
+    "endpoint": "",
+    "TLS": {
+      "enable_tls": true,
+      "tls_version": "TLSv1_3",
+      "server_key": null,
+      "server_cert": null,
+      "server_ca": "file:ca.pem"
     }
+  },
+  {
+    "id": "572a11c7-4fb6-45bf-8774-71ee849a48b4",
+    "name": "KEYCLOAK",
+    "host": "",
+    "port": 5000,
+    "ws_port": null,
+    "type": "IDP-Server",
+    "acsi": "server",
+    "ws_mode": "",
+    "auto_discovered": false,
+    "created_at": "2026-10-21T15:22:11.360080",
+    "endpoint": "https://keycloak:8443",
+    "status": "connected"
   }
 ]
