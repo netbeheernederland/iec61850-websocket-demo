@@ -18,7 +18,8 @@ Traffic → Playbook: pick a playbook and Run it, watch ✓ / ✗ come in per st
 Stop it, or Download / Upload / Delete one. Record turns clicks on the pinned
 demo buttons into playbook steps, and Stop recording saves it. Built-in
 playbooks are this folder; saved ones live under `BFF_PLAYBOOKS_DIR`
-(`/config/playbooks` on the `bff-config` volume in `docker-compose.yml`). A
+(`/config/playbooks`, which `docker-compose.yml` bind-mounts from
+`modules/bff/config/playbooks`). A
 recording is an ordinary playbook file - download it, drop it in here, and it
 runs the same from the CLI.
 
