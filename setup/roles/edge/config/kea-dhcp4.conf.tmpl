@@ -1,0 +1,52 @@
+// Rendered by render.sh -> /etc/kea/kea-dhcp4.conf on rti-edge.
+// The fleet's authoritative DHCPv4 server. Every named node in nodes.env
+// gets a reservation keyed by the MAC render.sh derives from its name; other
+// clients lease from the pool. Each lease is registered in DNS
+// (${DNS_DOMAIN}) through kea-dhcp-ddns.
+{
+  "Dhcp4": {
+    "interfaces-config": {
+      "interfaces": [ "rti0" ],
+      // rti0 may still be coming up when Kea starts at boot.
+      "service-sockets-max-retries": 20,
+      "service-sockets-retry-wait-time": 3000
+    },
+    "lease-database": { "type": "memfile", "persist": true, "lfc-interval": 3600 },
+    "authoritative": true,
+    "valid-lifetime": 3600,
+    "max-valid-lifetime": 7200,
+
+    "option-data": [
+      { "name": "domain-name-servers", "data": "${EDGE_IP}" },
+      { "name": "domain-name", "data": "${DNS_DOMAIN}" },
+      { "name": "domain-search", "data": "${DNS_DOMAIN}" }
+    ],
+
+    // DDNS: Kea names the client (the reservation's hostname, else one it
+    // generates) and kea-dhcp-ddns updates the forward and reverse zones.
+    "dhcp-ddns": { "enable-updates": true },
+    "ddns-send-updates": true,
+    "ddns-override-client-update": true,
+    "ddns-override-no-update": true,
+    "ddns-update-on-renew": true,
+    "ddns-replace-client-name": "when-not-present",
+    "ddns-generated-prefix": "dhcp",
+    "ddns-qualifying-suffix": "${DNS_DOMAIN}.",
+
+    "subnet4": [
+      {
+        "id": 1,
+        "subnet": "${NET_PREFIX}.0/24",
+        "pools": [ { "pool": "${DHCP_RANGE_START} - ${DHCP_RANGE_END}" } ],
+        "option-data": [ { "name": "routers", "data": "${NET_GATEWAY}" } ],
+        "reservations": [
+${KEA_RESERVATIONS}
+        ]
+      }
+    ],
+
+    "loggers": [
+      { "name": "kea-dhcp4", "output_options": [ { "output": "stdout" } ], "severity": "INFO" }
+    ]
+  }
+}

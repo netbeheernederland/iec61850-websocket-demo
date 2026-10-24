@@ -1,0 +1,20 @@
+// Rendered by render.sh -> /etc/bind/named.conf.local on rti-edge.
+// The fleet's forward and reverse zones. kea-dhcp-ddns updates them with the
+// rti-ddns key; the zone files live in /var/lib/bind, where named may write
+// its journals.
+key "rti-ddns" {
+	algorithm hmac-sha256;
+	secret "${DDNS_TSIG_SECRET}";
+};
+
+zone "${DNS_DOMAIN}" {
+	type primary;
+	file "/var/lib/bind/db.${DNS_DOMAIN}";
+	update-policy { grant rti-ddns zonesub ANY; };
+};
+
+zone "${REVERSE_ZONE}" {
+	type primary;
+	file "/var/lib/bind/db.${REVERSE_ZONE}";
+	update-policy { grant rti-ddns zonesub ANY; };
+};

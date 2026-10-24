@@ -1,7 +1,8 @@
 #cloud-config
 # Rendered by render.sh. NoCloud user-data for the rti-edge node:
-# HMI + BFF containers, plus the fleet's DHCP (isc-dhcp-server) and mDNS
-# (avahi) services. Static IP - it cannot lease from itself.
+# HMI, BFF and Keycloak containers, plus the fleet's DHCP and DDNS (Kea),
+# DNS for ${DNS_DOMAIN} (BIND) and mDNS (avahi) services. Static IP - it
+# cannot lease from itself.
 hostname: ${NODE_NAME}
 fqdn: ${NODE_NAME}.${MDNS_DOMAIN}
 manage_etc_hosts: localhost
@@ -33,14 +34,41 @@ write_files:
               - to: default
                 via: ${NET_GATEWAY}
             nameservers:
-              addresses: [${NET_GATEWAY}]
-  - path: /etc/default/isc-dhcp-server
-    content: |
-      INTERFACESv4="rti0"
-      INTERFACESv6=""
-  - path: /etc/dhcp/dhcpd.conf
+              addresses: [${EDGE_IP}]
+              search: [${DNS_DOMAIN}]
+  - path: /etc/kea/kea-dhcp4.conf
+    owner: root:_kea
+    permissions: "0640"
     encoding: b64
-    content: ${DHCPD_CONF_B64}
+    content: ${KEA_DHCP4_CONF_B64}
+  - path: /etc/kea/kea-dhcp-ddns.conf
+    owner: root:_kea
+    permissions: "0640"
+    encoding: b64
+    content: ${KEA_DDNS_CONF_B64}
+  - path: /etc/bind/named.conf.options
+    owner: root:bind
+    permissions: "0644"
+    encoding: b64
+    content: ${NAMED_OPTIONS_B64}
+  - path: /etc/bind/named.conf.local
+    owner: root:bind
+    permissions: "0640"
+    encoding: b64
+    content: ${NAMED_LOCAL_B64}
+  - path: /var/lib/bind/db.${DNS_DOMAIN}
+    owner: bind:bind
+    permissions: "0644"
+    encoding: b64
+    content: ${ZONE_FWD_B64}
+  - path: /var/lib/bind/db.${REVERSE_ZONE}
+    owner: bind:bind
+    permissions: "0644"
+    encoding: b64
+    content: ${ZONE_REV_B64}
+  - path: /etc/rti/keycloak/import/iec61850-test-realm.json
+    encoding: b64
+    content: ${KEYCLOAK_REALM_B64}
   - path: /etc/rti/bff-config/connections.json
     encoding: b64
     content: ${CONNECTIONS_JSON_B64}
@@ -65,6 +93,8 @@ write_files:
 runcmd:
   - netplan apply
   - systemctl enable --now avahi-daemon
-  - systemctl enable --now isc-dhcp-server
+  - systemctl enable --now named
+  - systemctl enable --now kea-dhcp-ddns-server
+  - systemctl enable --now kea-dhcp4-server
   - for t in /var/lib/rti/images/*.tar; do docker load -i "$t"; done
   - docker compose -f /etc/rti/compose.yaml up -d

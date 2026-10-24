@@ -1,0 +1,20 @@
+// Rendered by render.sh -> /etc/bind/named.conf.options on rti-edge.
+// Resolver for the fleet: answers ${DNS_DOMAIN} itself and forwards every
+// other name to the libvirt router.
+options {
+	directory "/var/cache/bind";
+
+	listen-on { 127.0.0.1; ${EDGE_IP}; };
+	listen-on-v6 { none; };
+
+	allow-query { localhost; ${NET_PREFIX}.0/24; };
+	recursion yes;
+	allow-recursion { localhost; ${NET_PREFIX}.0/24; };
+
+	forwarders { ${NET_GATEWAY}; };
+	forward only;
+
+	// The libvirt forwarder does not pass DNSSEC records through, and
+	// ${DNS_DOMAIN} is not delegated from any real parent.
+	dnssec-validation no;
+};

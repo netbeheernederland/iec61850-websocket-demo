@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Bake a golden image: Ubuntu cloud image + docker, avahi/nss-mdns and
-# isc-dhcp-server preinstalled, so per-node cloud-init never has to touch apt
-# (fast, deterministic, works even if the VM has no outbound DNS at boot).
+# Bake a golden image: Ubuntu cloud image + docker, avahi/nss-mdns, Kea
+# (DHCPv4 + DDNS) and BIND preinstalled, so per-node cloud-init never has to
+# touch apt (fast, deterministic, works even if the VM has no outbound DNS at
+# boot). Kea and BIND stay disabled; only the edge's cloud-init enables them.
 set -euo pipefail
 source "$(dirname "$0")/lib/common.sh"
 load_config
@@ -45,6 +46,10 @@ case "$IMAGE_TARGET" in
 esac
 FLASH_KERNEL_CMD="FK_FORCE=yes FK_IGNORE_EFI=yes FK_MACHINE='${FK_MACHINE}' flash-kernel"
 
+# Fleet DHCP/DNS services, installed everywhere and enabled on the edge only.
+EDGE_PACKAGES="kea-dhcp4-server kea-dhcp-ddns-server bind9 bind9-dnsutils"
+EDGE_SERVICES="kea-dhcp4-server kea-dhcp-ddns-server named"
+
 # Extra packages for Pi images only. I2C is already on in the stock config.txt
 # (dtparam=i2c_arm=on); i2c-tools adds i2cdetect/i2cget/i2cset.
 RPI_PACKAGES="i2c-tools"
@@ -55,10 +60,10 @@ RPI_GUEST_SCRIPT="
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
 apt-get -y -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold dist-upgrade
-apt-get -y install docker.io docker-compose-v2 avahi-daemon libnss-mdns isc-dhcp-server qemu-guest-agent ${RPI_PACKAGES}
+apt-get -y install docker.io docker-compose-v2 avahi-daemon libnss-mdns qemu-guest-agent ${EDGE_PACKAGES} ${RPI_PACKAGES}
 apt-get clean
 systemctl enable docker qemu-guest-agent avahi-daemon rti-issue.timer
-systemctl disable isc-dhcp-server
+systemctl disable ${EDGE_SERVICES}
 sed -ri 's/^hosts:.*/hosts: files mdns4_minimal [NOTFOUND=return] dns/' /etc/nsswitch.conf
 ${FLASH_KERNEL_CMD}
 rm -f /etc/machine-id && touch /etc/machine-id
@@ -174,14 +179,14 @@ fi
 log "installing packages into the image (needs network; takes a few minutes)"
 virt-customize --network -a "$out" \
   --update \
-  --install docker.io,docker-compose-v2,avahi-daemon,libnss-mdns,isc-dhcp-server,qemu-guest-agent \
+  --install "docker.io,docker-compose-v2,avahi-daemon,libnss-mdns,qemu-guest-agent,${EDGE_PACKAGES// /,}" \
   ${FK_MACHINE:+--install "${RPI_PACKAGES// /,}"} \
   --upload "${SETUP_DIR}/base/rti-issue:/usr/local/sbin/rti-issue" \
   --chmod 0755:/usr/local/sbin/rti-issue \
   --upload "${SETUP_DIR}/base/rti-issue.service:/etc/systemd/system/rti-issue.service" \
   --upload "${SETUP_DIR}/base/rti-issue.timer:/etc/systemd/system/rti-issue.timer" \
   --run-command 'systemctl enable docker qemu-guest-agent avahi-daemon rti-issue.timer' \
-  --run-command 'systemctl disable isc-dhcp-server' \
+  --run-command "systemctl disable ${EDGE_SERVICES}" \
   --run-command 'sed -ri "s/^hosts:.*/hosts: files mdns4_minimal [NOTFOUND=return] dns/" /etc/nsswitch.conf' \
   ${FK_MACHINE:+--run-command "$FLASH_KERNEL_CMD"} \
   --run-command 'rm -f /etc/machine-id && touch /etc/machine-id' \

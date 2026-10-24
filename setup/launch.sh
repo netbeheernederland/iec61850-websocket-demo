@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Define the libvirt network, then import each node as a domain. The edge node
 # is booted first and we wait for it to answer before starting the rest, since
-# it serves DHCP (and mDNS is only useful once peers have leases).
+# it serves DHCP and DNS (and mDNS is only useful once peers have leases).
 set -euo pipefail
 source "$(dirname "$0")/lib/common.sh"
 load_config
@@ -52,7 +52,7 @@ for line in "${NODES[@]}"; do
   [[ "$NODE_ROLE" == edge ]] || continue
   define_node
   wait_for_ping "$EDGE_IP"
-  log "letting dhcpd settle"; sleep 10
+  log "letting Kea and BIND settle"; sleep 10
 done
 
 # 3. everyone else ---------------------------------------------------

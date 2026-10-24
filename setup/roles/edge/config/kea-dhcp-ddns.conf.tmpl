@@ -1,0 +1,33 @@
+// Rendered by render.sh -> /etc/kea/kea-dhcp-ddns.conf on rti-edge.
+// Takes name change requests from kea-dhcp4 and sends them, signed with the
+// TSIG key render.sh generates, to the local BIND.
+{
+  "DhcpDdns": {
+    "ip-address": "127.0.0.1",
+    "port": 53001,
+    "tsig-keys": [
+      { "name": "rti-ddns", "algorithm": "HMAC-SHA256", "secret": "${DDNS_TSIG_SECRET}" }
+    ],
+    "forward-ddns": {
+      "ddns-domains": [
+        {
+          "name": "${DNS_DOMAIN}.",
+          "key-name": "rti-ddns",
+          "dns-servers": [ { "ip-address": "127.0.0.1", "port": 53 } ]
+        }
+      ]
+    },
+    "reverse-ddns": {
+      "ddns-domains": [
+        {
+          "name": "${REVERSE_ZONE}.",
+          "key-name": "rti-ddns",
+          "dns-servers": [ { "ip-address": "127.0.0.1", "port": 53 } ]
+        }
+      ]
+    },
+    "loggers": [
+      { "name": "kea-dhcp-ddns", "output_options": [ { "output": "stdout" } ], "severity": "INFO" }
+    ]
+  }
+}

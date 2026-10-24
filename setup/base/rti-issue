@@ -25,10 +25,12 @@ host="$(hostname)"
     grep -E '^ +(PORT|CP|MODELPATH):' "$compose" | tr -d '"' \
       | while read -r key val; do row "${key%:}" "${val:--}"; done
   fi
-  # Only the edge enables the DHCP server.
-  if systemctl -q is-enabled isc-dhcp-server 2>/dev/null; then
-    row dhcpd "$(systemctl is-active isc-dhcp-server)"
-  fi
+  # Only the edge enables the DHCP, DDNS and DNS servers.
+  for svc in kea-dhcp4:kea-dhcp4-server kea-ddns:kea-dhcp-ddns-server named:named; do
+    if systemctl -q is-enabled "${svc#*:}" 2>/dev/null; then
+      row "${svc%%:*}" "$(systemctl is-active "${svc#*:}")"
+    fi
+  done
   if systemctl -q is-active docker; then
     # State and health only: the "Up 5 minutes" text would change every minute.
     timeout 5 docker ps -a --format '{{.Names}} {{.State}} {{.Status}}' 2>/dev/null \

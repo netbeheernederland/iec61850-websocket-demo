@@ -1,0 +1,14 @@
+; Rendered by render.sh -> /var/lib/bind/db.${DNS_DOMAIN} on rti-edge.
+; Only the edge (static address) and its aliases are listed here; the other
+; nodes are added by kea-dhcp-ddns when they take their lease.
+$TTL 300
+@	IN SOA	${EDGE_NAME}.${DNS_DOMAIN}. hostmaster.${DNS_DOMAIN}. (
+		${ZONE_SERIAL} ; serial
+		3600       ; refresh
+		600        ; retry
+		86400      ; expire
+		300 )      ; negative TTL
+	IN NS	${EDGE_NAME}.${DNS_DOMAIN}.
+
+${EDGE_NAME}	IN A	${EDGE_IP}
+keycloak	IN CNAME	${EDGE_NAME}

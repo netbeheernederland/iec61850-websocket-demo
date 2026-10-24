@@ -1,0 +1,12 @@
+; Rendered by render.sh -> /var/lib/bind/db.${REVERSE_ZONE} on rti-edge.
+; kea-dhcp-ddns adds a PTR for every other lease.
+$TTL 300
+@	IN SOA	${EDGE_NAME}.${DNS_DOMAIN}. hostmaster.${DNS_DOMAIN}. (
+		${ZONE_SERIAL} ; serial
+		3600       ; refresh
+		600        ; retry
+		86400      ; expire
+		300 )      ; negative TTL
+	IN NS	${EDGE_NAME}.${DNS_DOMAIN}.
+
+${EDGE_HOST_OCTET}	IN PTR	${EDGE_NAME}.${DNS_DOMAIN}.

@@ -1,4 +1,4 @@
-# rti-edge: HMI + BFF on one machine.
+# rti-edge: HMI + BFF + Keycloak on one machine. Rendered by render.sh.
 # Split out of the root docker-compose.yml. Peers (SO, FSPs) are reached over
 # mDNS by <hostname>.local, listed in connections.json. Containers use host
 # networking so published ports land on the VM's own IP.
@@ -43,3 +43,32 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
+
+  keycloak:
+    image: keycloak:latest
+    container_name: keycloak
+    network_mode: host
+    command: ["start-dev", "--import-realm"]
+    environment:
+      # One issuer for every client: keycloak.${DNS_DOMAIN} is a CNAME for
+      # this node in the edge's BIND zone.
+      KC_HOSTNAME: http://keycloak.${DNS_DOMAIN}:8080
+      KC_HTTP_PORT: "8080"
+      KC_HTTPS_PORT: "8443"
+      KC_HEALTH_ENABLED: "true"
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      # The image runs as uid 1000, gid 0: the 0640 root-owned key is readable.
+      KC_HTTPS_CERTIFICATE_FILE: /certs/server.pem
+      KC_HTTPS_CERTIFICATE_KEY_FILE: /certs/server-key.pem
+    volumes:
+      - /etc/rti/keycloak/import:/opt/keycloak/data/import:ro
+      - /etc/rti/certs:/certs:ro
+    restart: unless-stopped
+    healthcheck:
+      # No curl in the image; ask the management port (9000) through bash.
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /health/ready HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q UP <&3"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
