@@ -8,8 +8,8 @@ dct:
   issued: 2026-09-20
   language: en
 owl:
-  versionIRI: "https://esa-artifacts.example.com/metamodel/decisions/2026-09/0004-adopt-rti-prefixed-service-container-and-image-names.html"
-  versionInfo: "v1.0.0 (2026-09-20)"
+  versionIRI: "https://esa-artifacts.example.com/metamodel/decisions/2026-10/0004-adopt-rti-prefixed-service-container-and-image-names.html"
+  versionInfo: "v1.1.0 (2026-10-25)"
 ---
 <!-- markdownlint-disable-next-line MD025 -->
 
@@ -93,3 +93,34 @@ Rename executed 2026-09-20. See commit "Rename bff-server service/
 container/image to rti-bff". If `modules/` is ever restructured, revisit
 whether module directory names should also gain the `rti-` prefix for full
 consistency with the runtime naming decided here.
+
+## Amendment v1.1.0 (2026-10-25): validity review
+
+Reviewed on 2026-10-25 against the repository at that date. The decision
+**remains valid and stays Accepted**; nothing above is changed.
+
+* Every RTI service still follows `rti-<role>`, including services added
+  after 2026-09-20: the IO plugin image `rti-io` and its container
+  `rti-so-io` (`modules/so/docker-compose.yml`), the Helm charts
+  `deploy/helm/rti-so` and `deploy/helm/rti-fsp`
+  ([ADR 0005](0005-deploy-so-and-fsp-to-kubernetes-with-helm-and-argocd.md)),
+  and the VM fleet's FSP containers, named after their node
+  (`rti-fsp01`, `rti-fsp02`, …).
+* Keycloak is infrastructure, like `cert-generator`, and therefore
+  unprefixed under this decision: `keycloak-dev` in `docker-compose.yml` and
+  `keycloak` on the VM fleet's `rti-edge` node (added 2026-10-24). The DHCP
+  and DNS services added to `rti-edge` on the same date (Kea, BIND) are host
+  packages, not containers, and fall outside this decision.
+* `grep -rn "bff-server"` still returns no matches outside this ADR.
+
+Two files named in the Decision Outcome have since been renamed; the
+naming rule they implement is unchanged:
+
+| Named above (2026-09-20) | Current file (2026-10-25) | Why |
+|---|---|---|
+| `setup/roles/edge/compose.yaml` | `setup/roles/edge/compose.yaml.tmpl` | Rendered by `render.sh` since Keycloak joined the edge |
+| `scripts/retag-bff-hmi.sh` | `scripts/retag-images.sh` | Now tags every `rti-*` image with its GHCR name for manual pushes |
+
+Observed, not decided here: the two Keycloak containers have different
+names (`keycloak-dev` and `keycloak`). If that difference starts to
+matter, settle it in a follow-up decision.
