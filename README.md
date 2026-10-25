@@ -91,6 +91,17 @@ scripts/deploy-rti-demo.sh --start --role so 192.168.100.97 \
   --role fsp --cp cp1 --model modules/fsp01/models/model_1.py 192.168.100.98
 ```
 
+Or make a Pi image with the role in it and flash that, so the Pi starts it
+on first boot without a deploy step:
+
+```bash
+setup/pi-user-data.sh --rpi 5 --hostname rti-fsp-pi5 \
+  --role fsp --cp cp1 --model modules/fsp01/models/model_1.py
+# -> setup/images/rti-fsp-pi5.img; setup/images/base-rti-rpi5.img is unchanged
+```
+
+See [setup/README.md](setup/README.md#writing-an-image-to-an-sd-card-or-ssd).
+
 ## Repository layout
 
 ```text

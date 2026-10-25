@@ -257,12 +257,17 @@ scripts/pull-rti-demo.sh --tag sha-1a2b3c4 fsp  # one image, pinned build
 scripts/deploy-rti-demo.sh --start --role so 192.168.100.97
 ```
 
-It also checks that each pulled image is arm64. By hand, the same steps are:
+It also checks that each pulled image is arm64. For a Pi that is not flashed
+yet, `setup/pi-user-data.sh --role so|fsp` writes the same archives into a
+new Pi image instead, and the Pi starts them on first boot (see
+[setup/README.md](../setup/README.md#writing-an-image-to-an-sd-card-or-ssd)).
+
+By hand, the same steps are:
 
 ```bash
 REGISTRY="ghcr.io/netbeheer-nederland/iec61850-websocket"
 LOCAL="netbeheer-nederland/iec61850-websocket"
-OUT="dist/rti-images"
+OUT="dist/rti-images-arm64"
 TAG="latest"            # or sha-<commit> to pin a build
 mkdir -p "${OUT}"
 
@@ -289,7 +294,8 @@ On each Pi, as the `rti` user, once:
 echo "<read-only token>" | docker login ghcr.io -u <github-user> --password-stdin
 ```
 
-Then, in `~/rti` (where `deploy-rti-demo.sh` puts the compose file), for each
+Then, in `~/rti` (where `deploy-rti-demo.sh` or the first boot puts the compose
+file), for each
 image the role needs (`so`: `rti-so rti-io`; `fsp`: `rti-fsp rti-io`):
 
 ```bash

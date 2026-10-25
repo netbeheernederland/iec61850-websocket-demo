@@ -62,7 +62,7 @@ setup/
   build-tarballs.sh  # docker save rti-* -> images/*.tar
   render.sh          # certs + templates -> build/<node>/{user-data,meta-data,spec,compose.yaml}
   make-disks.sh      # per node: expanded standalone qcow2 + copy-in + seed ISO
-  pi-user-data.sh    # rti login + hostname into a Pi image's cloud-init
+  pi-user-data.sh    # base Pi image -> images/<hostname>.img with rti login, hostname (+ --role on first boot)
   launch.sh          # define libvirt net; virt-install edge first, then the rest
   destroy.sh         # virsh destroy/undefine the fleet
   up.sh              # render (+certs) -> make-disks -> launch
@@ -226,23 +226,73 @@ kernel and initrd are copied to the boot partition.
 
 These commands bake the base OS and packages. The boot partition still has
 Ubuntu's stock cloud-init, whose only user is `ubuntu`, with password SSH
-login disabled, so add a login before flashing:
+login disabled, so make an image with a login for each Pi:
 
 ```bash
-./pi-user-data.sh --rpi 5 --hostname rti-pi5   # writes into images/base-rti-rpi5.img
+./pi-user-data.sh --rpi 5 --hostname rti-pi5   # images/base-rti-rpi5.img -> images/rti-pi5.img
 ```
 
-This writes `user-data` creating `rti` (sudo, docker, i2c) with `SSH_PUBKEY` and the
-hostname, without root (needs `mtools`). For a card that is already flashed, mount its
-`system-boot` partition and pass `--boot-dir <mountpoint>` instead; the script
-also changes the meta-data instance id so cloud-init applies it on the next
-boot. The Pi takes its address by DHCP on `eth0`; it then answers as
+This copies the base image to `images/<hostname>.img` (or `--out FILE`) and
+writes `user-data` into the copy, creating `rti` (sudo, docker, i2c) with
+`SSH_PUBKEY` and the hostname, without root (needs `mtools`). The base image
+is never changed, so one `build-base.sh` serves every Pi; rerunning for the
+same hostname replaces its image. Each copy takes the base image's size on
+disk (about 4 GB). Add `--role` to have the Pi start its role on first boot
+too (see the next section). For a card that is already flashed, mount its
+`system-boot` partition and pass `--boot-dir <mountpoint>` instead; that
+writes in place, and also changes the meta-data instance id so cloud-init
+applies it on the next boot. The Pi takes its address by DHCP on `eth0`; it then answers as
 `<hostname>.local`.
 
 Provide ARM64 container images before deployment.
 `make-disks.sh`, `launch.sh` and `up.sh` remain the KVM VM workflow; they do
 not provision or boot physical Raspberry Pis. Without arguments, downloading
 and building still produce the original amd64 VM base.
+
+### Writing an image to an SD card or SSD
+
+Flash the per-Pi `images/<hostname>.img` made by `pi-user-data.sh`, never
+`build/<node>/seed.iso`. The seed
+ISO is a ~400 KB data image holding only cloud-init's `user-data` and
+`meta-data`, with no operating system. `launch.sh` attaches it to a VM as a
+virtual CD-ROM next to the node's real disk (`build/<node>/<node>.qcow2`),
+and cloud-init reads it at first boot. It is an ISO 9660 filesystem with no
+partition table, so balenaEtcher warns that it does not look bootable. If
+you write it anyway, the card or SSD holds only those two files and its
+previous contents are gone.
+
+For a Raspberry Pi, with Pi 5 as the example:
+
+```bash
+./download-images.sh --rpi 5
+./build-base.sh --rpi 5                          # images/base-rti-rpi5.img
+../scripts/build-rti-demo.sh                     # or pull-rti-demo.sh: arm64 role images
+./pi-user-data.sh --rpi 5 --hostname rti-fsp-pi5 \
+  --role fsp --cp cp1 --model ../modules/fsp01/models/model_1.py
+                                                 # -> images/rti-fsp-pi5.img
+```
+
+Then write `images/rti-fsp-pi5.img` with balenaEtcher (or `dd`). This
+image has a partition table and the Pi boot firmware, so Etcher accepts it.
+
+With `--role so` or `--role fsp`, the Pi starts its role on first boot;
+`--cp`, `--port` and `--model` are the fsp settings, as for
+`deploy-rti-demo.sh`. The role's files, about 120 MB of image archives plus
+its compose file, `.env` and model, are put in `rti/` on the boot partition
+(512 MB, a few hundred MB free). On first boot cloud-init copies them to
+`~rti/rti`, the directory `deploy-rti-demo.sh` uses, runs
+`load-and-start.sh` there and deletes `rti/` from the boot partition. Follow
+it in `/var/log/rti-first-deploy.log` on the Pi; the containers are up once
+`docker ps` lists them.
+
+Without `--role` the Pi gets only the login and hostname. Push the role
+later from a workstation with `../scripts/deploy-rti-demo.sh` (see the
+[repository README](../README.md)); that is also how to update a Pi that
+already runs its role. Both use `../scripts/stage-rti-role.sh` to put the
+role's files together.
+
+An x86 PC that boots from the SSD has no workflow here yet: the scripts
+only produce VM disks plus a separate seed ISO.
 
 ### Console login banner
 
@@ -292,8 +342,8 @@ and load the key once per session with `ssh-add ~/.ssh/rti-demo`.
 The key is written into the nodes at first boot, so nodes that already
 exist keep their old key. Rebuild them after creating or changing it:
 `./destroy.sh` and then `./up.sh` for the VMs. For a Pi, rerun
-`./pi-user-data.sh` with the new `SSH_PUBKEY` (`--boot-dir` for a card
-that is already flashed) and boot it again.
+`./pi-user-data.sh` with the new `SSH_PUBKEY` and flash the new image, or
+use `--boot-dir` for a card that is already flashed, and boot it again.
 
 A separate key is not offered by default, so name it when connecting:
 
@@ -407,6 +457,11 @@ automatically, and Kea adds it to `rti-domain.tld` when it takes its lease.
   rebuild it with `./build-base.sh` before the first `./up.sh` with this
   version. The services are disabled in the image and enabled by the edge's
   cloud-init only.
+* A Pi written with `pi-user-data.sh --role` starts its role only on its
+  first boot. If that fails, `rti/` stays on the boot partition; check
+  `/var/log/rti-first-deploy.log`, then run `sudo /usr/local/sbin/rti-first-deploy`
+  or deploy with `../scripts/deploy-rti-demo.sh`. The first-boot path has
+  been tested on a scratch image, not yet on Pi hardware.
 * The DDNS TSIG key is generated once into `build/edge/ddns-tsig.secret`
   and reused by later renders; delete it to get a new one.
 * BFF service discovery is disabled (`RTI_DOCKER_ENABLED=false`) — it can't see

@@ -164,9 +164,9 @@ fi
 image_ready() {
   log "golden image ready: ${out}"
   if [[ "$IMAGE_TARGET" != vm ]]; then
-    # The stock Pi user-data has no usable SSH login, and this build has just
-    # replaced any user-data written into the previous image.
-    warn "no SSH login yet: run ./pi-user-data.sh --rpi ${IMAGE_TARGET#rpi} --hostname <name> before flashing"
+    # The stock Pi user-data has no usable SSH login; pi-user-data.sh makes a
+    # per-Pi copy of this base with one.
+    warn "no SSH login yet: run ./pi-user-data.sh --rpi ${IMAGE_TARGET#rpi} --hostname <name> and flash images/<name>.img"
   fi
 }
 

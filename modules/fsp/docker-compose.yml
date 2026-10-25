@@ -1,6 +1,7 @@
 # Role fsp: one rti-fsp, and its IO server (commented out), per machine. The
-# per-machine values come from the .env file scripts/deploy-rti-demo.sh writes
-# next to this file, from its --cp, --port and --model options.
+# per-machine values come from the .env file scripts/stage-rti-role.sh writes
+# next to this file, from the --cp, --port and --model options of
+# scripts/deploy-rti-demo.sh or setup/pi-user-data.sh --role.
 services:
   rti-fsp:
     container_name: rti-fsp
@@ -29,7 +30,7 @@ services:
       - "rti.host=rti-fsp"
       - "rti.port=${FSP_PORT:-5001}"
     volumes:
-      # The --model file is copied into models/ by scripts/deploy-rti-demo.sh
+      # The --model file is copied into models/ by scripts/stage-rti-role.sh
       - ./models:/models
 
 #  rti-fsp-io:

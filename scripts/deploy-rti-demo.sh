@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Copy the rti-demo image archives built by build-rti-demo.sh, plus a role's
-# files, to one or more Pis.
+# files, to one or more running Pis. The files per host are put together by
+# stage-rti-role.sh; setup/pi-user-data.sh --role writes the same files into
+# a Pi image instead, so the Pi starts its role on first boot.
 #
 # Usage: deploy-rti-demo.sh [--start] --role ROLE [fsp options] [user@]host ...
 #                                    [--role ROLE [fsp options] [user@]host ...]
@@ -26,27 +28,22 @@
 # Environment:
 #   TARGET_USER    login user for hosts without user@ (default: rti)
 #   RTI_IMAGE_DIR  where build-rti-demo.sh wrote the archives
+#                  (default: dist/rti-images-arm64, the Pis' architecture)
 set -euo pipefail
 
 # --- Configuration -----------------------------------------------------
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-RTI_IMAGE_DIR="${RTI_IMAGE_DIR:-${REPO_ROOT}/dist/rti-images}"
+export RTI_IMAGE_DIR="${RTI_IMAGE_DIR:-${REPO_ROOT}/dist/rti-images-arm64}"
 
 # Login user on the Pis: rti, as created by setup/pi-user-data.sh (VM_USER in
 # setup/roles.env). Override for a Pi set up otherwise, e.g. TARGET_USER=pi.
 TARGET_USER="${TARGET_USER:-rti}"
 TARGET_DIR="rti"                               # relative to the user's home
 
-# Script run on the target machine to load the image archives and start compose
-LOAD_AND_START_SCRIPT="${SCRIPT_DIR}/load-and-start.sh"
-
-# Images each role runs; its compose file is modules/<role>/docker-compose.yml
-declare -A ROLE_IMAGES=(
-  [so]="rti-so rti-io"
-  [fsp]="rti-fsp rti-io"
-)
+# Puts the role's files for one host in a directory
+STAGE_SCRIPT="${SCRIPT_DIR}/stage-rti-role.sh"
 
 usage() {
   # The header comment, from Usage: to the end
@@ -78,10 +75,10 @@ while [ $# -gt 0 ]; do
     --start) START=true ;;
     --role)
       need_value "$@"
-      if [ -z "${ROLE_IMAGES[$2]+x}" ]; then
-        echo "Unknown role: $2 (known: ${!ROLE_IMAGES[*]})" >&2
-        usage
-      fi
+      case "$2" in
+        so|fsp) ;;
+        *) echo "Unknown role: $2 (known: so fsp)" >&2; usage ;;
+      esac
       ROLE="$2"; shift ;;
     --cp) need_value "$@"; FSP_CP="$2"; shift ;;
     --port)
@@ -132,23 +129,12 @@ if [ ${#TARGETS[@]} -eq 0 ]; then
   usage
 fi
 
-# --- Check everything is in place before touching any machine -------------
-missing=()
+# --- Stage every host before touching any machine ------------------------
+# stage-rti-role.sh stops on a missing archive or compose file.
 declare -A cp_hosts=()
 for t in "${TARGETS[@]}"; do
-  role="${T_ROLE[${t}]}"
-  for image in ${ROLE_IMAGES[${role}]}; do
-    [ -f "${RTI_IMAGE_DIR}/${image}.tar.gz" ] || missing+=("${RTI_IMAGE_DIR}/${image}.tar.gz")
-  done
-  [ -f "${REPO_ROOT}/modules/${role}/docker-compose.yml" ] \
-    || missing+=("${REPO_ROOT}/modules/${role}/docker-compose.yml")
-  [ "${role}" = "fsp" ] && cp_hosts[${T_CP[${t}]}]+=" ${t}"
+  [ "${T_ROLE[${t}]}" = "fsp" ] && cp_hosts[${T_CP[${t}]}]+=" ${t}"
 done
-if [ ${#missing[@]} -gt 0 ]; then
-  echo "Missing files (run scripts/build-rti-demo.sh first for the images):" >&2
-  printf '  %s\n' "${missing[@]}" | sort -u >&2
-  exit 1
-fi
 for cp in "${!cp_hosts[@]}"; do
   read -ra hosts <<<"${cp_hosts[${cp}]}"
   if [ ${#hosts[@]} -gt 1 ]; then
@@ -156,50 +142,30 @@ for cp in "${!cp_hosts[@]}"; do
   fi
 done
 
-# --- Deploy ---------------------------------------------------------------
 STAGE_DIR="$(mktemp -d -t rti-deploy-XXXXXX)"
 trap 'rm -rf "${STAGE_DIR}"' EXIT
 
-# The host's .env, read by docker compose next to docker-compose.yml
-write_env() {
-  local t="$1" file="$2"
-  {
-    echo "# Written by scripts/deploy-rti-demo.sh for ${t} (role ${T_ROLE[${t}]})"
-    if [ "${T_ROLE[${t}]}" = "fsp" ]; then
-      echo "FSP_CP=${T_CP[${t}]}"
-      echo "FSP_PORT=${T_PORT[${t}]}"
-      if [ -n "${T_MODEL[${t}]}" ]; then
-        echo "FSP_MODELPATH=/models/$(basename "${T_MODEL[${t}]}")"
-      fi
-    fi
-  } > "${file}"
-}
-
-deploy_host() {
-  local t="$1" role env_file
-  local files=()
-  role="${T_ROLE[${t}]}"
-  env_file="${STAGE_DIR}/${t}.env"
-  write_env "${t}" "${env_file}"
-
-  for image in ${ROLE_IMAGES[${role}]}; do
-    files+=("${RTI_IMAGE_DIR}/${image}.tar.gz")
-  done
-  files+=("${REPO_ROOT}/modules/${role}/docker-compose.yml" "${LOAD_AND_START_SCRIPT}")
-
-  echo "=== ${t}:${TARGET_DIR}, role ${role}"
-  # scp needs the target directory to exist when copying several files;
-  # models/ is created for every host, so compose never makes it as root
-  ssh "${t}" mkdir -p "${TARGET_DIR}/models"
-  scp "${files[@]}" "${t}:${TARGET_DIR}"
-  scp "${env_file}" "${t}:${TARGET_DIR}/.env"
-  if [ "${role}" = "fsp" ] && [ -n "${T_MODEL[${t}]}" ]; then
-    scp "${T_MODEL[${t}]}" "${t}:${TARGET_DIR}/models/"
+for t in "${TARGETS[@]}"; do
+  args=(--role "${T_ROLE[${t}]}")
+  if [ "${T_ROLE[${t}]}" = "fsp" ]; then
+    args+=(--cp "${T_CP[${t}]}" --port "${T_PORT[${t}]}")
+    [ -n "${T_MODEL[${t}]}" ] && args+=(--model "${T_MODEL[${t}]}")
   fi
+  "${STAGE_SCRIPT}" "${args[@]}" "${STAGE_DIR}/${t}"
+done
+
+# --- Deploy ---------------------------------------------------------------
+deploy_host() {
+  local t="$1"
+
+  echo "=== ${t}:${TARGET_DIR}, role ${T_ROLE[${t}]}"
+  # tar keeps .env and models/ and creates the target directory
+  tar -C "${STAGE_DIR}/${t}" -cf - . \
+    | ssh "${t}" "mkdir -p ${TARGET_DIR} && tar -C ${TARGET_DIR} -xf -"
 
   if ${START}; then
     echo "Loading images and starting compose on ${t}..."
-    ssh "${t}" "cd ${TARGET_DIR} && chmod +x load-and-start.sh && ./load-and-start.sh"
+    ssh "${t}" "cd ${TARGET_DIR} && ./load-and-start.sh"
   fi
 }
 
@@ -208,7 +174,7 @@ for t in "${TARGETS[@]}"; do
 done
 
 if ! ${START}; then
-  echo "On each host, run: cd ${TARGET_DIR} && chmod +x load-and-start.sh && ./load-and-start.sh"
+  echo "On each host, run: cd ${TARGET_DIR} && ./load-and-start.sh"
   echo "(or re-run with --start to do this over ssh)"
 fi
 

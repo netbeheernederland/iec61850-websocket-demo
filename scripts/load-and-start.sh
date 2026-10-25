@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Runs on the target machine (any role), in the directory that received
-# the *.tar.gz image archives, docker-compose.yml and .env from deploy-rti-demo.sh.
+# the *.tar.gz image archives, docker-compose.yml and .env staged by
+# stage-rti-role.sh: copied by deploy-rti-demo.sh, or from the boot partition
+# on first boot (setup/pi-user-data.sh --role).
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

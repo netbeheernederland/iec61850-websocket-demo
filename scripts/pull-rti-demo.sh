@@ -19,7 +19,7 @@
 #   RTI_REGISTRY   registry and namespace to pull from
 #                  (default: ghcr.io/netbeheer-nederland/iec61850-websocket)
 #   RTI_TAG        default for --tag
-#   RTI_IMAGE_DIR  where the archives are written (default: dist/rti-images)
+#   RTI_IMAGE_DIR  where the archives are written (default: dist/rti-images-arm64)
 set -euo pipefail
 
 # --- Configuration -----------------------------------------------------
@@ -36,7 +36,7 @@ ALL_IMAGES=(fsp so io)
 PLATFORM="linux/arm64/v8"
 
 # Archives are kept here for deploy-rti-demo.sh
-RTI_IMAGE_DIR="${RTI_IMAGE_DIR:-${REPO_ROOT}/dist/rti-images}"
+RTI_IMAGE_DIR="${RTI_IMAGE_DIR:-${REPO_ROOT}/dist/rti-images-arm64}"
 
 usage() {
   # The header comment, from Usage: to the end

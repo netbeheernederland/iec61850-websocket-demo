@@ -11,8 +11,8 @@
 #                         fleet: bff hmi so fsp, then setup/build-tarballs.sh.
 #
 # Environment:
-#   RTI_IMAGE_DIR  where the archives are written (default: dist/rti-images
-#                  for arm64, dist/rti-images-<arch> for other platforms)
+#   RTI_IMAGE_DIR  where the archives are written
+#                  (default: dist/rti-images-<arch>, e.g. dist/rti-images-arm64)
 #   CLONE_DIR      persistent clone of the upstream repo
 #   VITE_BFF_HOST, VITE_BFF_PORT
 #                  optional BFF address baked into the hmi bundle
@@ -59,13 +59,10 @@ while [ $# -gt 0 ]; do
 done
 [ ${#IMAGES[@]} -eq 0 ] && IMAGES=("${DEFAULT_IMAGES[@]}")
 
-# Archives are kept here for deploy-rti-demo.sh. Other platforms get their
-# own directory, so they never replace the Pi archives.
-case "${PLATFORM}" in
-  linux/arm64*) DEFAULT_IMAGE_DIR="${REPO_ROOT}/dist/rti-images" ;;
-  *)            DEFAULT_IMAGE_DIR="${REPO_ROOT}/dist/rti-images-$(echo "${PLATFORM#*/}" | tr / -)" ;;
-esac
-RTI_IMAGE_DIR="${RTI_IMAGE_DIR:-${DEFAULT_IMAGE_DIR}}"
+# Archives are kept per architecture (linux/arm64/v8 -> arm64), so builds
+# for different platforms never replace each other's archives.
+ARCH="${PLATFORM#*/}"; ARCH="${ARCH%%/*}"
+RTI_IMAGE_DIR="${RTI_IMAGE_DIR:-${REPO_ROOT}/dist/rti-images-${ARCH}}"
 
 # --- Clone (first run) or update (subsequent runs) -----------------------
 if [ -d "${CLONE_DIR}/.git" ]; then
