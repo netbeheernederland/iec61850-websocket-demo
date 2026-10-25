@@ -46,7 +46,7 @@ are not generated):
 ```
 NODES=(
   "rti-so     so    port=5000"
-  "rti-fsp01  fsp   port=5001 cp=cp1 model=model.py"
+  "rti-fsp01  fsp   port=5001 cp=cp1 model=model_1.py"
   "rti-fsp02  fsp   port=5005 cp=cp2 model="
 )
 ```

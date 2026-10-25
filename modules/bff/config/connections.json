@@ -31,7 +31,7 @@
   },
   {
     "id": "8df5c591-94d1-4cf2-8b85-40bd50ee614d",
-    "name": "FSP01",
+    "name": "SP01",
     "host": "rti-fsp01",
     "port": 5001,
     "type": "RTI-FSP",
@@ -62,7 +62,7 @@
   },
   {
     "id": "5f97efba-420e-4937-a56b-d6668f04669e",
-    "name": "FSP02",
+    "name": "SP02",
     "host": "rti-fsp02",
     "port": 5005,
     "type": "RTI-FSP",
