@@ -99,8 +99,6 @@ services:
       cert-generator:
         condition: service_completed_successfully
     environment:
-#      RTI_DOCKER_ENABLED: true
-#      RTI_SERVICE_DISCOVERY_ENABLED: true
       LOG_LEVEL: debug
       BFF_CONNECTIONS_FILE: "/config/connections.json"
       BFF_PLAYBOOKS_DIR: "/config/playbooks"
@@ -143,10 +141,7 @@ services:
       cert-generator:
         condition: service_completed_successfully
     environment:
-#      PORT: 5000
       LOG_LEVEL: debug
-#      BFF_CONNECTIONS_FILE: /config/connections.json
-#      BFF_PLAYBOOKS_DIR: /config/playbooks
     volumes:
       - certs:/certs:ro
     networks:
@@ -171,7 +166,7 @@ services:
       PORT: 5001
       CP: cp1
       LOG_LEVEL: debug
-      MODELPATH: "/models/model_1.py"
+      MODEL_PATH: "/models/model_1.py"
       # The plugins it connects to: the dr-st7789v display, which needs
       # model_1.py's LD0/DWMX1.WMaxSpt and LD0/MMXU1.TotW. host_url in the
       # file is this FSP as the display reaches it: the published port 5001.
@@ -202,8 +197,8 @@ services:
     environment:
       PORT: 5005
       CP: cp2
-      MODELPATH: /models/model_2.py
       LOG_LEVEL: debug
+      MODEL_PATH: /models/model_2.py
     volumes:
       - ./modules/fsp02/models:/models
       - certs:/certs:ro
