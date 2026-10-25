@@ -128,16 +128,19 @@ can inherit the repo's access settings; without it the package belongs only
 to the organisation and must be shared by hand.
 
 > Already have the image loaded locally (after `build-rti-demo.sh`)? Then
-> tagging and pushing is enough:
+> tagging and pushing is enough. `scripts/retag-images.sh` adds the GHCR
+> names (`latest`, plus `--tag sha-…` if given) to every local
+> `rti-*` image, or just the ones you name, and prints the push commands:
 >
 > ```bash
-> docker tag netbeheer-nederland/iec61850-websocket/rti-fsp:latest \
->   ghcr.io/netbeheer-nederland/iec61850-websocket/rti-fsp:latest
+> scripts/retag-images.sh --tag "sha-${SHA}" fsp
 > docker push ghcr.io/netbeheer-nederland/iec61850-websocket/rti-fsp:latest
+> docker push ghcr.io/netbeheer-nederland/iec61850-websocket/rti-fsp:sha-${SHA}
 > ```
 >
-> The package is then not linked to the repo; link it once in the package
-> settings (*Connect repository*).
+> It shows each image's architecture: check it before pushing over
+> `latest`. The package is then not linked to the repo; link it once in the
+> package settings (*Connect repository*).
 
 ## 5. Build and push with GitHub Actions
 

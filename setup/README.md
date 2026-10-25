@@ -137,7 +137,7 @@ cd setup
 # one-time
 ./download-images.sh          # Ubuntu 24.04 cloud image
 ./build-base.sh               # golden image (needs network; a few minutes)
-docker compose -f ../docker-compose.yml build    # build repository-named images
+../scripts/build-rti-demo.sh --platform linux/amd64 bff hmi so fsp   # amd64 images from upstream
 docker pull quay.io/keycloak/keycloak:26.0       # Keycloak for the edge
 ./build-tarballs.sh           # automatically retag + docker save them
 
@@ -152,18 +152,29 @@ virsh console rti-edge        # watch first boot
 ssh rti@192.168.150.2 'sudo cloud-init status --wait && docker ps'
 ```
 
-To export published images already pulled onto the host, select their
-repository and tag explicitly:
+`build-rti-demo.sh` clones the upstream `iec61850-websocket` repository
+(branch `initial-refactor`), builds each image with `docker buildx` and
+loads it into the host's Docker as
+`netbeheer-nederland/iec61850-websocket/rti-<role>:latest`, the names
+`build-tarballs.sh` reads by default. Without `--platform` it builds the
+arm64 Pi images instead, which do not run on the amd64 VMs. It also saves
+`.tar.gz` archives for `deploy-rti-demo.sh` under `dist/rti-images-amd64/`;
+the VM fleet does not use them.
+
+To export images from another repository or tag, select them explicitly:
 
 ```bash
 RTI_IMAGE_REPO=ghcr.io/netbeheer-nederland/iec61850-websocket \
 RTI_IMAGE_TAG=latest ./build-tarballs.sh
 ```
 
+The images published on GHCR are arm64 only, however, so they do not run
+on the amd64 VMs.
+
 The exporter requires all five source images (the four `rti-*` images and
 Keycloak, `KEYCLOAK_IMAGE` to override) locally and does not pull them.
-Set the same environment variables for Compose builds and tarball exports
-when using a custom repository or tag.
+When using a custom repository or tag, set the same variables for every
+`build-tarballs.sh` run.
 
 `render.sh` is where the fleet's TLS material is generated: on the first run
 (and whenever the node list — hence the SAN set — changes) it runs
