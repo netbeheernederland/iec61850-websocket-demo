@@ -7,10 +7,11 @@ services:
       - "8765:8765"
     environment:
       - PORT=5000
-      # The plugins it connects to (upstream decision 0029): the IO plugin
+      # The plugins it connects to (upstream decision 0029), written to .env
+      # by scripts/stage-rti-role.sh from --plugins (default: the IO plugin
       # dr_panel, which writes input changes back to host_url, and the
-      # sample plugin dr_leds.
-      - 'PLUGINS={"host_url": "http://rti-so:5000", "plugins": [{"name": "dr_panel", "url": "http://dr-panel:9000/plugin"}, {"name": "dr_leds", "url": "http://dr-leds:8099/plugin"}]}'
+      # sample plugin dr_leds)
+      - 'PLUGINS=${RTI_PLUGINS:-}'
     networks:
       - rti-network
     restart: unless-stopped
@@ -28,6 +29,8 @@ services:
 
   dr-panel:
     image: netbeheer-nederland/iec61850-websocket/dr-panel:latest
+    # Started when COMPOSE_PROFILES in .env names it (--plugins)
+    profiles: [dr-panel]
     container_name: dr-panel
     ports:
       - "9000:9000"
@@ -71,6 +74,8 @@ services:
   # health check are set by its Dockerfile; nothing is published.
   dr-leds:
     image: netbeheer-nederland/iec61850-websocket/dr-leds:latest
+    # Started when COMPOSE_PROFILES in .env names it (--plugins)
+    profiles: [dr-leds]
     container_name: dr-leds
     networks:
       - rti-network

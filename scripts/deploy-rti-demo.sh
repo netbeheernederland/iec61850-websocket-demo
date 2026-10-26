@@ -4,13 +4,18 @@
 # stage-rti-role.sh; setup/pi-user-data.sh --role writes the same files into
 # a Pi image instead, so the Pi starts its role on first boot.
 #
-# Usage: deploy-rti-demo.sh [--start] --role ROLE [fsp options] [user@]host ...
-#                                    [--role ROLE [fsp options] [user@]host ...]
+# Usage: deploy-rti-demo.sh [--start] --role ROLE [host options] [user@]host ...
+#                                    [--role ROLE [host options] [user@]host ...]
 #
 #   --role ROLE     so or fsp: the role of the hosts after it
 #   [user@]host     a Pi, by hostname or IP address; without user@ the login
 #                   user is TARGET_USER
 #   --start         also run load-and-start.sh on each host after copying
+#
+# host options, for the hosts after them (until given again):
+#   --plugins LIST  plugins to copy and run, comma-separated (dr-panel,
+#                   dr-leds), or none (default: the role's own, so
+#                   dr-panel,dr-leds and fsp dr-leds)
 #
 # fsp options, for the fsp hosts after them (until given again):
 #   --cp CP         control point (default: cp1)
@@ -21,6 +26,7 @@
 # Examples:
 #   deploy-rti-demo.sh --role so 192.168.100.97
 #   deploy-rti-demo.sh --start --role fsp --model modules/fsp01/models/model_1.py pi@rti-pi5.local
+#   deploy-rti-demo.sh --role fsp --plugins dr-panel,dr-leds 192.168.100.98
 #   deploy-rti-demo.sh --role so 192.168.100.97 \
 #     --role fsp --cp cp1 --model modules/fsp01/models/model_1.py 192.168.100.98 \
 #                --cp cp2 --port 5005 --model modules/fsp02/models/model_2.py 192.168.100.99
@@ -52,15 +58,16 @@ usage() {
 }
 
 # --- Arguments ----------------------------------------------------------
-# Each host is recorded with the role and fsp options in effect where it
-# appears on the command line.
+# Each host is recorded with the role, plugins and fsp options in effect
+# where it appears on the command line.
 START=false
 ROLE=""
+PLUGINS=""                                     # empty: the role's own
 FSP_CP="cp1"
 FSP_PORT="5001"
 FSP_MODEL=""
 TARGETS=()
-declare -A T_ROLE=() T_CP=() T_PORT=() T_MODEL=()
+declare -A T_ROLE=() T_PLUGINS=() T_CP=() T_PORT=() T_MODEL=()
 
 need_value() {
   if [ $# -lt 2 ] || [ -z "$2" ]; then
@@ -80,6 +87,8 @@ while [ $# -gt 0 ]; do
         *) echo "Unknown role: $2 (known: so fsp)" >&2; usage ;;
       esac
       ROLE="$2"; shift ;;
+    # Checked by stage-rti-role.sh, before any host is touched
+    --plugins) need_value "$@"; PLUGINS="$2"; shift ;;
     --cp) need_value "$@"; FSP_CP="$2"; shift ;;
     --port)
       need_value "$@"
@@ -116,6 +125,7 @@ while [ $# -gt 0 ]; do
       fi
       TARGETS+=("${host}")
       T_ROLE[${host}]="${ROLE}"
+      T_PLUGINS[${host}]="${PLUGINS}"
       T_CP[${host}]="${FSP_CP}"
       T_PORT[${host}]="${FSP_PORT}"
       T_MODEL[${host}]="${FSP_MODEL}"
@@ -147,6 +157,7 @@ trap 'rm -rf "${STAGE_DIR}"' EXIT
 
 for t in "${TARGETS[@]}"; do
   args=(--role "${T_ROLE[${t}]}")
+  [ -n "${T_PLUGINS[${t}]}" ] && args+=(--plugins "${T_PLUGINS[${t}]}")
   if [ "${T_ROLE[${t}]}" = "fsp" ]; then
     args+=(--cp "${T_CP[${t}]}" --port "${T_PORT[${t}]}")
     [ -n "${T_MODEL[${t}]}" ] && args+=(--model "${T_MODEL[${t}]}")
@@ -159,9 +170,11 @@ deploy_host() {
   local t="$1"
 
   echo "=== ${t}:${TARGET_DIR}, role ${T_ROLE[${t}]}"
-  # tar keeps .env and models/ and creates the target directory
+  # tar keeps .env and models/ and creates the target directory; archives
+  # from an earlier deploy with other plugins are removed first, as
+  # load-and-start.sh loads every one
   tar -C "${STAGE_DIR}/${t}" -cf - . \
-    | ssh "${t}" "mkdir -p ${TARGET_DIR} && tar -C ${TARGET_DIR} -xf -"
+    | ssh "${t}" "mkdir -p ${TARGET_DIR} && rm -f ${TARGET_DIR}/*.tar.gz && tar -C ${TARGET_DIR} -xf -"
 
   if ${START}; then
     echo "Loading images and starting compose on ${t}..."

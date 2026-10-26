@@ -8,7 +8,7 @@
 #   ./pi-user-data.sh --image FILE [--hostname NAME]  # any raw Pi image -> images/NAME.img
 #   ./pi-user-data.sh --boot-dir DIR [--hostname NAME] # a flashed card's mounted system-boot, in place
 #   ... --out FILE                                     # with --rpi/--image: write the new image here
-#   ... --role so|fsp [--cp CP] [--port PORT] [--model FILE]   # also start a role on first boot
+#   ... --role so|fsp [--plugins LIST] [--cp CP] [--port PORT] [--model FILE]   # also start a role on first boot
 #
 # With --rpi or --image the base image is left alone: the script writes a copy
 # for this one Pi (default images/<hostname>.img, replaced if it exists) and
@@ -46,7 +46,7 @@ while [[ $# -gt 0 ]]; do
     --boot-dir) [[ $# -ge 2 ]] || die "--boot-dir requires a directory"; boot_dir="$2"; shift 2 ;;
     --hostname) [[ $# -ge 2 ]] || die "--hostname requires a name"; hostname="$2"; shift 2 ;;
     --out)      [[ $# -ge 2 ]] || die "--out requires a file"; out="$2"; shift 2 ;;
-    --role|--cp|--port|--model)
+    --role|--plugins|--cp|--port|--model)
       [[ $# -ge 2 ]] || die "$1 requires a value"; stage_args+=("$1" "$2"); shift 2 ;;
     -h|--help)  usage ;;
     *) die "unknown argument: $1 (use --help)" ;;
@@ -68,7 +68,7 @@ if [[ ${#stage_args[@]} -gt 0 ]]; then
   for ((i = 0; i < ${#stage_args[@]}; i += 2)); do
     [[ "${stage_args[i]}" == --role ]] && role="${stage_args[i+1]}"
   done
-  [[ -n "$role" ]] || die "--cp, --port and --model need --role"
+  [[ -n "$role" ]] || die "--plugins, --cp, --port and --model need --role"
 fi
 
 work="$(mktemp -d)"

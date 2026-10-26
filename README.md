@@ -86,14 +86,16 @@ produces arm64 image archives and `scripts/deploy-rti-demo.sh` copies them,
 with a role's compose file, to each Pi. `build-rti-demo.sh` builds the base
 images `rti-fsp`, `rti-so`, `rti-bff` and `rti-hmi` and every upstream plugin
 in `examples/rti-plugins/`: the IO plugin `dr-panel` and the sample plugin
-`dr-leds`, which ship with every role. `pull-rti-demo.sh` only has the
-published `rti-fsp` and `rti-so`; build the plugins with
-`build-rti-demo.sh plugins`:
+`dr-leds`. `--plugins` picks the plugins a Pi runs, comma-separated or
+`none`; by default so runs `dr-panel,dr-leds` and fsp `dr-leds`.
+`pull-rti-demo.sh` only has the published `rti-fsp` and `rti-so`; build the
+plugins with `build-rti-demo.sh plugins`:
 
 ```bash
 scripts/build-rti-demo.sh        # or: pull-rti-demo.sh && build-rti-demo.sh plugins
 scripts/deploy-rti-demo.sh --start --role so 192.168.100.97 \
-  --role fsp --cp cp1 --model modules/fsp01/models/model_1.py 192.168.100.98
+  --role fsp --cp cp1 --model modules/fsp01/models/model_1.py 192.168.100.98 \
+  --plugins dr-panel,dr-leds --cp cp2 192.168.100.99
 ```
 
 Or make a Pi image with the role in it and flash that, so the Pi starts it

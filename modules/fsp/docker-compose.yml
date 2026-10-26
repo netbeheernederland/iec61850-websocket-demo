@@ -1,8 +1,9 @@
-# Role fsp: one rti-fsp, the sample plugin dr-leds and the IO plugin
-# dr-panel (commented out), per machine. The
-# per-machine values come from the .env file scripts/stage-rti-role.sh writes
-# next to this file, from the --cp, --port and --model options of
-# scripts/deploy-rti-demo.sh or setup/pi-user-data.sh --role.
+# Role fsp: one rti-fsp and the plugins it runs (default: the sample plugin
+# dr-leds; the IO plugin dr-panel too with --plugins dr-panel,dr-leds), per
+# machine. The per-machine values come from the .env file
+# scripts/stage-rti-role.sh writes next to this file, from the --plugins,
+# --cp, --port and --model options of scripts/deploy-rti-demo.sh or
+# setup/pi-user-data.sh --role.
 services:
   rti-fsp:
     container_name: rti-fsp
@@ -14,11 +15,9 @@ services:
       - CP=${FSP_CP:-cp1}
       # Empty (no --model): fsp's built-in default model
       - MODELPATH=${FSP_MODELPATH:-}
-      # The plugins it connects to (upstream decision 0029): dr_leds. With
-      # dr-panel below uncommented, use the second line: dr_panel writes input
-      # changes back to host_url.
-      - 'PLUGINS={"host_url": "http://rti-fsp:${FSP_PORT:-5001}", "plugins": [{"name": "dr_leds", "url": "http://dr-leds:8099/plugin"}]}'
-      #- 'PLUGINS={"host_url": "http://rti-fsp:${FSP_PORT:-5001}", "plugins": [{"name": "dr_panel", "url": "http://dr-panel:9000/plugin"}, {"name": "dr_leds", "url": "http://dr-leds:8099/plugin"}]}'
+      # The plugins it connects to (upstream decision 0029), written to .env
+      # from --plugins; dr_panel writes input changes back to host_url
+      - 'PLUGINS=${RTI_PLUGINS:-}'
     networks:
       - rti-network
     restart: unless-stopped
@@ -42,50 +41,54 @@ services:
   dr-leds:
     container_name: dr-leds
     image: netbeheer-nederland/iec61850-websocket/dr-leds:latest
+    # Started when COMPOSE_PROFILES in .env names it (--plugins)
+    profiles: [dr-leds]
     networks:
       - rti-network
     restart: unless-stopped
 
-#  dr-panel:
-#    container_name: dr-panel
-#    image: netbeheer-nederland/iec61850-websocket/dr-panel:latest
-#    ports:
-#      - "9000:9000"
-#    environment:
-#      - PORT=9000
-#    devices:
-#      - "/dev/gpiochip0:/dev/gpiochip0"
-#      - "/dev/gpiochip4:/dev/gpiochip4"
-#      - "/dev/gpiochip10:/dev/gpiochip10"
-#      - "/dev/gpiochip11:/dev/gpiochip11"
-#      - "/dev/gpiochip12:/dev/gpiochip12"
-#      - "/dev/gpiochip13:/dev/gpiochip13"
-#      # I2C (e.g. the SSD1306 OLED, decision 0024) and SPI, as upstream
-#      - "/dev/i2c-1:/dev/i2c-1"
-#      - "/dev/i2c-13:/dev/i2c-13"
-#      - "/dev/i2c-14:/dev/i2c-14"
-#      - "/dev/spidev0.0:/dev/spidev0.0"
-#      - "/dev/spidev0.1:/dev/spidev0.1"
-#    privileged: true
-#    ipc: host
-#    security_opt:
-#      - seccomp:unconfined
-#    cap_add:
-#      - SYS_RAWIO
-#    networks:
-#      - rti-network
-#    restart: unless-stopped
-#    healthcheck:
-#      test: ["CMD", "curl", "-f", "http://localhost:9000/api/io/health"]
-#      interval: 30s
-#      timeout: 10s
-#      retries: 3
-#      start_period: 20s
-#    labels:
-#      - "rti.service=dr-panel"
-#      - "rti.type=RTI-IO"
-#      - "rti.host=dr-panel"
-#      - "rti.port=9000"
+  dr-panel:
+    container_name: dr-panel
+    image: netbeheer-nederland/iec61850-websocket/dr-panel:latest
+    # Started when COMPOSE_PROFILES in .env names it (--plugins)
+    profiles: [dr-panel]
+    ports:
+      - "9000:9000"
+    environment:
+      - PORT=9000
+    devices:
+      - "/dev/gpiochip0:/dev/gpiochip0"
+      - "/dev/gpiochip4:/dev/gpiochip4"
+      - "/dev/gpiochip10:/dev/gpiochip10"
+      - "/dev/gpiochip11:/dev/gpiochip11"
+      - "/dev/gpiochip12:/dev/gpiochip12"
+      - "/dev/gpiochip13:/dev/gpiochip13"
+      # I2C (e.g. the SSD1306 OLED, decision 0024) and SPI, as upstream
+      - "/dev/i2c-1:/dev/i2c-1"
+      - "/dev/i2c-13:/dev/i2c-13"
+      - "/dev/i2c-14:/dev/i2c-14"
+      - "/dev/spidev0.0:/dev/spidev0.0"
+      - "/dev/spidev0.1:/dev/spidev0.1"
+    privileged: true
+    ipc: host
+    security_opt:
+      - seccomp:unconfined
+    cap_add:
+      - SYS_RAWIO
+    networks:
+      - rti-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/api/io/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    labels:
+      - "rti.service=dr-panel"
+      - "rti.type=RTI-IO"
+      - "rti.host=dr-panel"
+      - "rti.port=9000"
 
 networks:
   rti-network:
