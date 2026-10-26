@@ -21,6 +21,7 @@ services:
       #- 'PLUGINS={"host_url": "http://rti-fsp:${FSP_PORT:-5001}", "plugins": [{"name": "dr_panel", "url": "http://dr-panel:9000/plugin"}, {"name": "dr_leds", "url": "http://dr-leds:8099/plugin"}]}'
     networks:
       - rti-network
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:${FSP_PORT:-5001}/api/status"]
       interval: 30s
@@ -73,6 +74,7 @@ services:
 #      - SYS_RAWIO
 #    networks:
 #      - rti-network
+#    restart: unless-stopped
 #    healthcheck:
 #      test: ["CMD", "curl", "-f", "http://localhost:9000/api/io/health"]
 #      interval: 30s
