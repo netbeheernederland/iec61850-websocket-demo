@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Put the files one Pi needs for its role in a directory: the role's image
-# archives, its docker-compose.yml, an .env with the fsp settings, the fsp
-# model and load-and-start.sh. deploy-rti-demo.sh copies the directory to a
+# archives (its base image and the plugins dr-panel and dr-leds), its
+# docker-compose.yml, an .env with the fsp settings, the fsp model and
+# load-and-start.sh. deploy-rti-demo.sh copies the directory to a
 # running Pi; setup/pi-user-data.sh writes it to a Pi image's boot partition,
 # where cloud-init picks it up on first boot.
 #
@@ -29,8 +30,8 @@ LOAD_AND_START_SCRIPT="${SCRIPT_DIR}/load-and-start.sh"
 
 # Images each role runs; its compose file is modules/<role>/docker-compose.yml
 declare -A ROLE_IMAGES=(
-  [so]="rti-so rti-io"
-  [fsp]="rti-fsp rti-io"
+  [so]="rti-so dr-panel dr-leds"
+  [fsp]="rti-fsp dr-panel dr-leds"
 )
 
 usage() {
@@ -101,7 +102,7 @@ done
 [ -f "${REPO_ROOT}/modules/${ROLE}/docker-compose.yml" ] \
   || missing+=("${REPO_ROOT}/modules/${ROLE}/docker-compose.yml")
 if [ ${#missing[@]} -gt 0 ]; then
-  echo "Missing files (run scripts/build-rti-demo.sh or pull-rti-demo.sh first for the images):" >&2
+  echo "Missing files (run scripts/build-rti-demo.sh first for the images; pull-rti-demo.sh has no plugins):" >&2
   printf '  %s\n' "${missing[@]}" >&2
   exit 1
 fi

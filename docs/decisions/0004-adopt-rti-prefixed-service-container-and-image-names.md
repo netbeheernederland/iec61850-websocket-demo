@@ -3,17 +3,17 @@ parent: Decisions
 nav_order: ADR.04
 dct:
   identifier: urn:uuid:1a8f3d6c-5e2a-4b9c-a7f1-3d6c5e2a0404
-  title: "Adopt rti-prefixed names for every service, container, and image"
+  title: "Adopt rti-prefixed names for every base service, container, and image"
   isVersionOf: accepted
   issued: 2026-09-20
   language: en
 owl:
   versionIRI: "https://esa-artifacts.example.com/metamodel/decisions/2026-10/0004-adopt-rti-prefixed-service-container-and-image-names.html"
-  versionInfo: "v1.1.0 (2026-10-25)"
+  versionInfo: "v1.2.0 (2026-10-26)"
 ---
 <!-- markdownlint-disable-next-line MD025 -->
 
-# Adopt rti-prefixed names for every service, container, and image
+# Adopt rti-prefixed names for every base service, container, and image
 
 ## Context and Problem Statement
 
@@ -23,8 +23,16 @@ VM compose templates, `connections.json`, and the `SERVER_HOSTNAMES` cert
 SAN list — a mismatch in any one place breaks TLS SAN coverage, mDNS
 resolution, or `depends_on` wiring. Most services already followed an
 `rti-<role>` pattern (`rti-hmi`, `rti-so`, `rti-fsp01`, `rti-fsp02`), but the
-BFF service was named `bff-server`, the one outlier. What naming pattern
-should every service, container, and image follow going forward?
+BFF service was named `bff-server`, the one outlier.
+
+Since 2026-10, the demo also runs plugins next to these base services: HTTP
+services that the FSP and SO connect to (upstream decisions 0028-0030). Each
+plugin is its own upstream project in `examples/rti-plugins/`, with its own
+image, container and plugin name: the IO plugin `dr-panel` (plugin name
+`dr_panel`, upstream ADR 0038 and 0040, which replaced the IO server `rti-io`)
+and the sample plugin `dr-leds` (`dr_leds`, upstream ADR 0039). What naming
+pattern should every service, container, and image follow going forward, and
+does it cover the plugins?
 
 ## Decision Drivers
 
@@ -38,12 +46,19 @@ should every service, container, and image follow going forward?
   infrastructure, not an RTI service).
 * Renaming has a real cost (every reference must be updated together), so
   the pattern should be settled once rather than revisited per-service.
+* Plugin names owned upstream: a plugin's image, container and plugin name
+  are set by its upstream project and repeated in upstream's compose files,
+  plugin configuration and documentation. A local rename (for example
+  `rti-dr-panel`) would have to be kept in step with every upstream rename,
+  as when `rti-io` became `dr-panel` on 2026-10-26.
 
 ## Considered Options
 
-* `rti-<role>` for every RTI service (`rti-hmi`, `rti-bff`, `rti-so`,
-  `rti-fsp01`, `rti-fsp02`), infrastructure services (`cert-generator`)
-  unprefixed
+* `rti-<role>` for every RTI base service (`rti-hmi`, `rti-bff`, `rti-so`,
+  `rti-fsp01`, `rti-fsp02`), plugins under their upstream name (`dr-panel`,
+  `dr-leds`), infrastructure services (`cert-generator`) unprefixed
+* `rti-<role>` for every RTI service, plugins included (`rti-dr-panel`,
+  `rti-dr-leds`), infrastructure services unprefixed
 * Leave `bff-server` as the outlier, prefix only newly-added services going
   forward
 * Drop the `rti-` prefix everywhere for shorter names (`hmi`, `bff`, `so`,
@@ -51,11 +66,16 @@ should every service, container, and image follow going forward?
 
 ## Decision Outcome
 
-Chosen option: "`rti-<role>` for every RTI service, infrastructure services
-unprefixed", because it is the only option that resolves the existing
-inconsistency (`bff-server` vs. `rti-hmi`/`rti-so`/`rti-fsp*`) rather than
-either freezing it in place or discarding a pattern three of five services
-already used. `bff-server` was renamed to `rti-bff` across
+Chosen option: "`rti-<role>` for every RTI base service, plugins under their
+upstream name, infrastructure services unprefixed", because it is the only
+option that resolves the existing inconsistency (`bff-server` vs.
+`rti-hmi`/`rti-so`/`rti-fsp*`) rather than either freezing it in place or
+discarding a pattern three of five services already used, while leaving the
+plugin names to the upstream projects that own them. The base services are
+`rti-hmi`, `rti-bff`, `rti-so` and `rti-fsp`; the plugins are `dr-panel` and
+`dr-leds`, for image, container and service alike.
+
+On 2026-09-20, `bff-server` was renamed to `rti-bff` across
 `docker-compose.yml` (service key, `container_name`, image path,
 `SERVER_HOSTNAMES`, `rti.service`/`rti.host` labels), `setup/roles.env`,
 `setup/roles/edge/compose.yaml`, `scripts/retag-bff-hmi.sh`, and the
@@ -63,7 +83,7 @@ already used. `bff-server` was renamed to `rti-bff` across
 
 ### Consequences
 
-* Good, because every RTI service name, container name, and image path is
+* Good, because every RTI base service name, container name, and image path is
   now derivable from the same `rti-<role>` rule, reducing the chance of a
   cross-file mismatch when adding a service.
 * Good, because it directly enables predictable name generation for the
@@ -71,6 +91,17 @@ already used. `bff-server` was renamed to `rti-bff` across
   `../specs/2026-09-20-compose-node-scaling-design.md` — a
   generator can construct `rti-<role><NN>` without a per-service exception
   table.
+* Good, because the plugins' names here match upstream's compose files,
+  plugin configuration and documentation, so they can be followed without
+  translation; `build-rti-demo.sh` builds every plugin in
+  `examples/rti-plugins/` under its folder name, with `-` for `_`.
+* Bad, because an image's name no longer shows on its own whether it is a
+  base service or a plugin: the `dr-` prefix is upstream's, not a rule of
+  this repository, and a future plugin may use another prefix.
+* Bad, because the rename of `rti-io` to `dr-panel` (2026-10-26) is not
+  backward-compatible: the image `rti-io` published on GHCR, the Helm value
+  `io` (now `drPanel`) and the plugin name `io` (now `dr_panel`) no longer
+  resolve.
 * Neutral, because `modules/bff/` (the module/config directory) was
   deliberately left unrenamed — it sits alongside `modules/fsp01/` and
   `modules/so/`, which also omit the `rti-` prefix, so renaming only `bff`
@@ -85,12 +116,17 @@ already used. `bff-server` was renamed to `rti-bff` across
 Verified with `docker compose -f docker-compose.yml config`, which parses
 and resolves the renamed service without error, and by `grep -rn
 "bff-server"` across the repository returning no remaining matches after
-the rename.
+the rename. For the plugins, verified on 2026-10-26 with `docker compose
+config` on `modules/so` and `modules/fsp`, `helm lint` on both charts, and by
+`grep -rn "rti-io"` matching only historical notes.
 
 ## More Information
 
 Rename executed 2026-09-20. See commit "Rename bff-server service/
-container/image to rti-bff". If `modules/` is ever restructured, revisit
+container/image to rti-bff". The plugin names follow upstream
+`iec61850-websocket` decisions 0038 (the IO plugin is `dr_panel`), 0039 (the
+sample plugin is `dr_leds`) and 0040 (the IO plugin's plugin name is
+`dr_panel`), applied here on 2026-10-26. If `modules/` is ever restructured, revisit
 whether module directory names should also gain the `rti-` prefix for full
 consistency with the runtime naming decided here.
 
@@ -101,7 +137,8 @@ Reviewed on 2026-10-25 against the repository at that date. The decision
 
 * Every RTI service still follows `rti-<role>`, including services added
   after 2026-09-20: the IO plugin image `rti-io` and its container
-  `rti-so-io` (`modules/so/docker-compose.yml`), the Helm charts
+  `rti-so-io` (`modules/so/docker-compose.yml`; since 2026-10-26 the plugin
+  `dr-panel`, see the Decision Outcome), the Helm charts
   `deploy/helm/rti-so` and `deploy/helm/rti-fsp`
   ([ADR 0005](0005-deploy-so-and-fsp-to-kubernetes-with-helm-and-argocd.md)),
   and the VM fleet's FSP containers, named after their node

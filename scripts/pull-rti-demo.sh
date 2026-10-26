@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
-# Pull the arm64/v8 rti-demo images (fsp, so, io) from the GitHub Container
+# Pull the arm64/v8 rti-demo base images (fsp, so) from the GitHub Container
 # Registry and save them as .tar.gz archives for deploy-rti-demo.sh, in place
 # of building them with build-rti-demo.sh. See docs/docker-images-github.md.
+# The plugins dr-panel and dr-leds aren't published: build them with
+# build-rti-demo.sh plugins. (The published rti-io is the IO server from
+# before it became the plugin dr_panel; the role compose files don't use it.)
 #
-# Usage: pull-rti-demo.sh [--tag TAG] [fsp] [so] [io]   (no images: all three)
+# Usage: pull-rti-demo.sh [--tag TAG] [fsp] [so]   (no images: both)
 #
 #   --tag TAG   registry tag to pull, e.g. sha-1a2b3c4 to pin a build
 #               (default: RTI_TAG, else latest)
@@ -31,7 +34,7 @@ TAG="${RTI_TAG:-latest}"
 
 # Local name, as used by the compose files and build-rti-demo.sh
 IMAGE_BASE="netbeheer-nederland/iec61850-websocket"
-ALL_IMAGES=(fsp so io)
+ALL_IMAGES=(fsp so)
 
 PLATFORM="linux/arm64/v8"
 
@@ -55,7 +58,7 @@ while [ $# -gt 0 ]; do
         usage
       fi
       TAG="$2"; shift ;;
-    fsp|so|io) IMAGES+=("$1") ;;
+    fsp|so) IMAGES+=("$1") ;;
     *) echo "Unknown argument: $1" >&2; usage ;;
   esac
   shift
@@ -104,4 +107,4 @@ done
 
 echo "Images in ${RTI_IMAGE_DIR}:"
 ls -lh "${RTI_IMAGE_DIR}"
-echo "Next: scripts/deploy-rti-demo.sh [machine ...]"
+echo "Next: scripts/build-rti-demo.sh plugins (if not done), then scripts/deploy-rti-demo.sh [machine ...]"

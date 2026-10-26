@@ -42,23 +42,23 @@ service:
   websocketNodePort: ""
   annotations: {}
 
-# The IO server (rti-io) as a sidecar: same pod, so same node as the SO,
-# reached on localhost and connected as the plugin io. Needs a privileged
+# The IO plugin dr-panel as a sidecar: same pod, so same node as the SO,
+# reached on localhost and connected as the plugin dr_panel. Needs a privileged
 # container on a Pi with the GPIO, I2C and SPI devices; the namespace must
 # allow privileged pods.
-io:
+drPanel:
   enabled: false
   image:
-    repository: ghcr.io/netbeheer-nederland/iec61850-websocket/rti-io
+    repository: ghcr.io/netbeheer-nederland/iec61850-websocket/dr-panel
     tag: latest
     pullPolicy: IfNotPresent
   port: 9000
-  # The io plugin's settings, e.g. {write_inputs: false}
+  # The dr_panel plugin's settings, e.g. {write_inputs: false}
   settings: {}
   resources: {}
 
 # More plugins to connect to (plugin API version 2, upstream decision 0029),
-# after the IO sidecar's io entry. Each is {name, url, settings}, e.g. the
+# after the sidecar's dr_panel entry. Each is {name, url, settings}, e.g. the
 # dr-st7789v display:
 #   - name: display_st7789
 #     url: http://192.168.0.226:8000/plugin

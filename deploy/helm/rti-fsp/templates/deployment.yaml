@@ -34,7 +34,7 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- if .Values.io.enabled }}
+      {{- if .Values.drPanel.enabled }}
       hostIPC: true
       {{- end }}
       containers:
@@ -98,16 +98,16 @@ spec:
               readOnly: true
             {{- end }}
           {{- end }}
-        {{- if .Values.io.enabled }}
-        - name: rti-io
-          image: "{{ .Values.io.image.repository }}:{{ .Values.io.image.tag }}"
-          imagePullPolicy: {{ .Values.io.image.pullPolicy }}
+        {{- if .Values.drPanel.enabled }}
+        - name: dr-panel
+          image: "{{ .Values.drPanel.image.repository }}:{{ .Values.drPanel.image.tag }}"
+          imagePullPolicy: {{ .Values.drPanel.image.pullPolicy }}
           env:
             - name: PORT
-              value: {{ .Values.io.port | quote }}
+              value: {{ .Values.drPanel.port | quote }}
           ports:
-            - name: io
-              containerPort: {{ .Values.io.port }}
+            - name: dr-panel
+              containerPort: {{ .Values.drPanel.port }}
               protocol: TCP
           # GPIO, I2C and SPI: a privileged container sees the host's /dev
           securityContext:
@@ -117,12 +117,12 @@ spec:
           livenessProbe:
             httpGet:
               path: /api/io/health
-              port: io
+              port: dr-panel
             initialDelaySeconds: 20
             periodSeconds: 30
             timeoutSeconds: 10
             failureThreshold: 3
-          {{- with .Values.io.resources }}
+          {{- with .Values.drPanel.resources }}
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}

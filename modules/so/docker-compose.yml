@@ -7,9 +7,10 @@ services:
       - "8765:8765"
     environment:
       - PORT=5000
-      # The plugins it connects to (upstream decision 0029): its IO server,
-      # which writes input changes back to host_url.
-      - 'PLUGINS={"host_url": "http://rti-so:5000", "plugins": [{"name": "io", "url": "http://rti-so-io:9000/plugin"}]}'
+      # The plugins it connects to (upstream decision 0029): the IO plugin
+      # dr_panel, which writes input changes back to host_url, and the
+      # sample plugin dr_leds.
+      - 'PLUGINS={"host_url": "http://rti-so:5000", "plugins": [{"name": "dr_panel", "url": "http://dr-panel:9000/plugin"}, {"name": "dr_leds", "url": "http://dr-leds:8099/plugin"}]}'
     networks:
       - rti-network
     healthcheck:
@@ -24,9 +25,9 @@ services:
       - "rti.host=rti-so"
       - "rti.port=5000"
 
-  rti-so-io:
-    image: netbeheer-nederland/iec61850-websocket/rti-io:latest
-    container_name: rti-so-io
+  dr-panel:
+    image: netbeheer-nederland/iec61850-websocket/dr-panel:latest
+    container_name: dr-panel
     ports:
       - "9000:9000"
     environment:
@@ -59,10 +60,19 @@ services:
       retries: 3
       start_period: 20s
     labels:
-      - "rti.service=demo_io"
-      - "rti.type=GPIO-LED-Control"
-      - "rti.host=demo_io_so"
+      - "rti.service=dr-panel"
+      - "rti.type=RTI-IO"
+      - "rti.host=dr-panel"
       - "rti.port=9000"
+
+  # The sample plugin: two simulated LEDs, no hardware. Port 8099 and the
+  # health check are set by its Dockerfile; nothing is published.
+  dr-leds:
+    image: netbeheer-nederland/iec61850-websocket/dr-leds:latest
+    container_name: dr-leds
+    networks:
+      - rti-network
+    restart: unless-stopped
 
 networks:
   rti-network:

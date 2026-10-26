@@ -1,4 +1,5 @@
-# rti-so (ACSI client / RTI-SO). Split out of the root docker-compose.yml.
+# rti-so (ACSI client / RTI-SO) and its plugin dr-leds. Split out of the
+# root docker-compose.yml.
 # Host networking exposes 5000 (API) and 8765 (WebSocket) on the VM IP.
 name: rti-so
 
@@ -11,6 +12,9 @@ services:
       PORT: "5000"
       PYTHONUNBUFFERED: "1"
       LOG_LEVEL: debug
+      # Its plugins (upstream decision 0029): dr-leds below. dr_panel needs a
+      # Pi's devices, so it isn't on the VMs.
+      PLUGINS: '{"host_url": "http://localhost:5000", "plugins": [{"name": "dr_leds", "url": "http://localhost:8099/plugin"}]}'
     volumes:
       - /etc/rti/certs:/certs:ro
     restart: unless-stopped
@@ -20,3 +24,14 @@ services:
       timeout: 10s
       retries: 3
       start_period: 20s
+
+  # The sample plugin dr_leds (two simulated LEDs), one per node. On
+  # 127.0.0.1 only: just this node's rti-so connects to it.
+  dr-leds:
+    image: dr-leds:latest
+    container_name: dr-leds
+    network_mode: host
+    environment:
+      HOST: 127.0.0.1
+      PORT: "8099"
+    restart: unless-stopped

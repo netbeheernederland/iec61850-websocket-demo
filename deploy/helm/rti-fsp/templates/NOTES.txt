@@ -1,4 +1,4 @@
-RTI-FSP {{ include "rti-fsp.fullname" . }}: control point {{ .Values.cp }}, model {{ include "rti-fsp.modelFile" . | default "built-in" }}{{ if .Values.io.enabled }}, with IO sidecar{{ end }}.
+RTI-FSP {{ include "rti-fsp.fullname" . }}: control point {{ .Values.cp }}, model {{ include "rti-fsp.modelFile" . | default "built-in" }}{{ if .Values.drPanel.enabled }}, with the dr-panel sidecar{{ end }}.
 
 In the cluster: http://{{ include "rti-fsp.fullname" . }}.{{ .Release.Namespace }}.svc:{{ .Values.port }}
 

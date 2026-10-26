@@ -15,7 +15,7 @@ The examples assume:
 ```text
 Cluster:       k3s on the Pis (arm64 nodes), ArgoCD in namespace argocd
 Repository:    git@gitlab.apps.mypeters.eu:architecture/iec61850-websocket-demo.git, branch main
-Images:        ghcr.io/netbeheer-nederland/iec61850-websocket/rti-{so,fsp,io}
+Images:        ghcr.io/netbeheer-nederland/iec61850-websocket/{rti-so,rti-fsp,dr-panel}
                (see docker-images-github.md)
 Namespace:     rti-demo
 ```
@@ -25,8 +25,8 @@ Namespace:     rti-demo
 ```text
 deploy/
 ├── helm/
-│   ├── rti-so/                 chart: one SO (+ optional IO sidecar)
-│   └── rti-fsp/                chart: one FSP for one control point (+ optional IO sidecar)
+│   ├── rti-so/                 chart: one SO (+ optional dr-panel sidecar)
+│   └── rti-fsp/                chart: one FSP for one control point (+ optional dr-panel sidecar)
 │       └── models/             FSP models bundled in the chart (model_1.py, model_2.py)
 ├── argocd/
 │   ├── bootstrap.yaml          the one Application applied by hand
@@ -73,29 +73,31 @@ one **Service**. The FSP chart adds a **ConfigMap** with the model.
 | `model.file`       | —                          | empty: the image's built-in model        |
 | `model.content`    | —                          | model source inline, instead of a bundled file |
 | `service.type`     | `ClusterIP`                | `ClusterIP`                              |
-| `io.enabled`       | `false`                    | `false`                                  |
+| `drPanel.enabled`  | `false`                    | `false`                                  |
 | `certs.secretName` | empty: no `/certs`         | empty: no `/certs`                       |
 | `imagePullSecrets` | none                       | none                                     |
 | `nodeSelector`     | `kubernetes.io/arch: arm64` | `kubernetes.io/arch: arm64`             |
 
 See each chart's `values.yaml` for all values and their comments.
 
-**IO sidecar.** With `io.enabled: true` the IO server (`rti-io`, port 9000)
-runs in the same pod: on the same node, and connected as the plugin `io` at
-`http://localhost:9000/plugin` (plugin API version 2, upstream decision 0029).
-`io.settings` are its settings, e.g. `write_inputs: false`. The IO container is
+**dr-panel sidecar.** With `drPanel.enabled: true` the IO plugin (`dr-panel`,
+formerly `rti-io`, port 9000) runs in the same pod: on the same node, and
+connected as the plugin `dr_panel` at `http://localhost:9000/plugin` (plugin
+API version 2, upstream decision 0029). `drPanel.settings` are its settings,
+e.g. `write_inputs: false`. The dr-panel container is
 privileged (GPIO, I2C, SPI) and the pod uses the host's IPC namespace. Pin the
 pod to the Pi with the hardware:
 
 ```yaml
-io:
+drPanel:
   enabled: true
 nodeSelector:
   kubernetes.io/hostname: rti-pi5    # merged with the default kubernetes.io/arch
 ```
 
-**Other plugins.** `plugins` lists more plugins to connect to, after `io`,
-as `{name, url, settings}`. The chart passes them, with `io`, to the SO or FSP
+**Other plugins.** `plugins` lists more plugins to connect to, after
+`dr_panel`, as `{name, url, settings}`. The chart passes them, with
+`dr_panel`, to the SO or FSP
 as `PLUGINS`. A plugin outside the pod writes back to `host_url`, which is
 `http://localhost:<port>` unless `pluginHostUrl` is set: set it to the SO's or
 FSP's address as that plugin reaches it, for example its LoadBalancer address.
@@ -226,7 +228,7 @@ The ApplicationSet creates `rti-fsp-cp3`. A second SO works the same way under
 with `rti-`) or `destination.server` (a cluster registered with
 `argocd cluster add`) in its `installation.yaml`.
 
-**Roll out a new image**: set `image.tag` (and `io.image.tag`) to the new
+**Roll out a new image**: set `image.tag` (and `drPanel.image.tag`) to the new
 `sha-<commit>` tag in `values.yaml`. With `latest`, ArgoCD sees no change and
 a running pod keeps its image; pinning tags is what makes rollouts visible in
 Git.
@@ -285,6 +287,6 @@ reverts changes made outside Git.
 | Pod `ImagePullBackOff`                                     | No `ghcr-pull` secret in the namespace, or the token lacks `read:packages` (section 3b).                               |
 | Pod `Pending`, `didn't match Pod's node affinity/selector` | No arm64 node, or the `kubernetes.io/hostname` in `nodeSelector` does not match a node name (`kubectl get nodes`).   |
 | `model.file "…" is not in the chart's models/ directory`   | The file is not bundled: add it to `deploy/helm/rti-fsp/models/` or give `model.content`.                             |
-| Pod rejected: `violates PodSecurity "baseline"`            | IO sidecar is privileged; label the namespace `pod-security.kubernetes.io/enforce=privileged`.                       |
+| Pod rejected: `violates PodSecurity "baseline"`            | dr-panel sidecar is privileged; label the namespace `pod-security.kubernetes.io/enforce=privileged`.                       |
 | LoadBalancer Service stays `<pending>`                     | Two installations use the same port, or the cluster has no load balancer; use another port or `NodePort`.            |
 | New image not running after pushing it to GHCR             | `image.tag` did not change (`latest`); pin `sha-<commit>`, or `kubectl -n rti-demo rollout restart deploy/<name>` with `pullPolicy: Always`. |

@@ -13,10 +13,10 @@ port: 5000
 service:
   type: LoadBalancer
 
-# As in modules/so/docker-compose.yml: the IO server on the same Pi
-io:
+# As in modules/so/docker-compose.yml: the IO plugin dr-panel on the same Pi
+drPanel:
   enabled: true
 
-# With IO enabled, pin the pod to the Pi that has the hardware
+# With dr-panel enabled, pin the pod to the Pi that has the hardware
 #nodeSelector:
 #  kubernetes.io/hostname: rti-pi5

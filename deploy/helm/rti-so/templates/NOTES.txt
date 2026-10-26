@@ -1,4 +1,4 @@
-RTI-SO {{ include "rti-so.fullname" . }}{{ if .Values.io.enabled }}, with IO sidecar{{ end }}.
+RTI-SO {{ include "rti-so.fullname" . }}{{ if .Values.drPanel.enabled }}, with the dr-panel sidecar{{ end }}.
 
 In the cluster:
   API:       http://{{ include "rti-so.fullname" . }}.{{ .Release.Namespace }}.svc:{{ .Values.port }}

@@ -34,13 +34,13 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
 {{/*
-The plugin configuration (PLUGINS) as JSON: the IO sidecar as io, then
+The plugin configuration (PLUGINS) as JSON: the dr-panel sidecar as dr_panel, then
 .Values.plugins. Empty when there are none.
 */}}
 {{- define "rti-so.pluginsJson" -}}
 {{- $plugins := list }}
-{{- if .Values.io.enabled }}
-{{- $plugins = append $plugins (dict "name" "io" "url" (printf "http://localhost:%v/plugin" .Values.io.port) "settings" .Values.io.settings) }}
+{{- if .Values.drPanel.enabled }}
+{{- $plugins = append $plugins (dict "name" "dr_panel" "url" (printf "http://localhost:%v/plugin" .Values.drPanel.port) "settings" .Values.drPanel.settings) }}
 {{- end }}
 {{- $plugins = concat $plugins .Values.plugins }}
 {{- if $plugins }}

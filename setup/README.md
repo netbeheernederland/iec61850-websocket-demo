@@ -15,8 +15,8 @@ realm file is seeded from `../modules/keycloak/`.
 | role   | node(s)                     | containers             | notes                                                                 |
 |--------|-----------------------------|------------------------|-----------------------------------------------------------------------|
 | `edge` | `rti-edge`                  | `rti-bff`, `rti-hmi`, `keycloak` | also runs the fleet's **Kea** DHCP + DDNS, **BIND** for `rti-domain.tld` and **mDNS**; static IP `192.168.150.2` |
-| `so`   | `rti-so`                    | `rti-so`               | DHCP reservation `.11`                                                |
-| `fsp`  | `rti-fsp01`, `rti-fsp02`, … | `rti-fsp` (1 per node) | templated; add machines by editing `nodes.env`                        |
+| `so`   | `rti-so`                    | `rti-so`, `dr-leds`    | DHCP reservation `.11`                                                |
+| `fsp`  | `rti-fsp01`, `rti-fsp02`, … | `rti-fsp`, `dr-leds` (1 each per node) | templated; add machines by editing `nodes.env`        |
 
 Key differences from the root compose stack:
 
@@ -49,6 +49,11 @@ Key differences from the root compose stack:
   `build-tarballs.sh` reads these names and automatically tags the images as
   `rti-<role>:latest` before saving them, matching the fleet's
   Compose files and existing tarball filenames.
+* **Plugins** keep their own name: `${RTI_IMAGE_REPO}/dr-leds:${RTI_IMAGE_TAG}`
+  is saved as `dr-leds:latest`. Every SO and FSP node runs its own `dr-leds`
+  (the sample plugin, on `127.0.0.1:8099`) and connects to it through
+  `PLUGINS` in its compose file. The IO plugin `dr-panel` needs a Pi's GPIO,
+  I2C and SPI devices, so it runs only on the Pis.
 * Containers use `network_mode: host`.
 
 ## Layout
@@ -137,7 +142,7 @@ cd setup
 # one-time
 ./download-images.sh          # Ubuntu 24.04 cloud image
 ./build-base.sh               # golden image (needs network; a few minutes)
-../scripts/build-rti-demo.sh --platform linux/amd64 bff hmi so fsp   # amd64 images from upstream
+../scripts/build-rti-demo.sh --platform linux/amd64 bff hmi so fsp dr-leds   # amd64 images from upstream
 docker pull quay.io/keycloak/keycloak:26.0       # Keycloak for the edge
 ./build-tarballs.sh           # automatically retag + docker save them
 
@@ -155,9 +160,11 @@ ssh rti@192.168.150.2 'sudo cloud-init status --wait && docker ps'
 `build-rti-demo.sh` clones the upstream `iec61850-websocket` repository
 (branch `initial-refactor`), builds each image with `docker buildx` and
 loads it into the host's Docker as
-`netbeheer-nederland/iec61850-websocket/rti-<role>:latest`, the names
-`build-tarballs.sh` reads by default. Without `--platform` it builds the
-arm64 Pi images instead, which do not run on the amd64 VMs. It also saves
+`netbeheer-nederland/iec61850-websocket/rti-<role>:latest` (plugins as
+`.../dr-leds:latest` and `.../dr-panel:latest`), the names
+`build-tarballs.sh` reads by default. Without image names it builds all of
+them, including `dr-panel`, which the VMs don't use. Without `--platform` it
+builds the arm64 Pi images instead, which do not run on the amd64 VMs. It also saves
 `.tar.gz` archives for `deploy-rti-demo.sh` under `dist/rti-images-amd64/`;
 the VM fleet does not use them.
 
@@ -171,8 +178,8 @@ RTI_IMAGE_TAG=latest ./build-tarballs.sh
 The images published on GHCR are arm64 only, however, so they do not run
 on the amd64 VMs.
 
-The exporter requires all five source images (the four `rti-*` images and
-Keycloak, `KEYCLOAK_IMAGE` to override) locally and does not pull them.
+The exporter requires all six source images (the four `rti-*` images,
+`dr-leds` and Keycloak, `KEYCLOAK_IMAGE` to override) locally and does not pull them.
 When using a custom repository or tag, set the same variables for every
 `build-tarballs.sh` run.
 
@@ -266,7 +273,7 @@ For a Raspberry Pi, with Pi 5 as the example:
 ```bash
 ./download-images.sh --rpi 5
 ./build-base.sh --rpi 5                          # images/base-rti-rpi5.img
-../scripts/build-rti-demo.sh                     # or pull-rti-demo.sh: arm64 role images
+../scripts/build-rti-demo.sh                     # arm64 base + plugin images
 ./pi-user-data.sh --rpi 5 --hostname rti-fsp-pi5 \
   --role fsp --cp cp1 --model ../modules/fsp01/models/model_1.py
                                                  # -> images/rti-fsp-pi5.img
@@ -277,8 +284,9 @@ image has a partition table and the Pi boot firmware, so Etcher accepts it.
 
 With `--role so` or `--role fsp`, the Pi starts its role on first boot;
 `--cp`, `--port` and `--model` are the fsp settings, as for
-`deploy-rti-demo.sh`. The role's files, about 120 MB of image archives plus
-its compose file, `.env` and model, are put in `rti/` on the boot partition
+`deploy-rti-demo.sh`. The role's files, about 170 MB of image archives (its
+base image plus `dr-panel` and `dr-leds`) plus its compose file, `.env` and
+model, are put in `rti/` on the boot partition
 (512 MB, a few hundred MB free). On first boot cloud-init copies them to
 `~rti/rti`, the directory `deploy-rti-demo.sh` uses, runs
 `load-and-start.sh` there and deletes `rti/` from the boot partition. Follow
@@ -417,8 +425,8 @@ if the host does not resolve `.local`.
 
 Once logged in, each node runs its slice of the stack from
 `/etc/rti/compose.yaml`. The containers are `rti-bff`, `rti-hmi` and
-`keycloak` on the edge, `rti-so` on the SO, and on an FSP one named after
-the node:
+`keycloak` on the edge, `rti-so` and `dr-leds` on the SO, and on an FSP
+`dr-leds` and one named after the node:
 
 ```bash
 docker ps

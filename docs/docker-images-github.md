@@ -1,8 +1,8 @@
 # Docker Images on GitHub (GHCR) — Getting Started
 
-This guide covers publishing the rti-demo images (`rti-fsp`, `rti-so`,
-`rti-io`) to the **GitHub Container Registry** (GHCR, `ghcr.io`) and getting
-them from there onto the Pis.
+This guide covers publishing the rti-demo images (`rti-fsp`, `rti-so` and
+the IO plugin `dr-panel`, formerly `rti-io`) to the **GitHub Container
+Registry** (GHCR, `ghcr.io`) and getting them from there onto the Pis.
 
 It does not replace the tarball flow. [ADR 0003](decisions/0003-ship-vm-fleet-images-as-docker-save-tarballs.md)
 still holds: machines must be able to start without access to a registry, so
@@ -19,6 +19,7 @@ Branch:         initial-refactor
 Example dir:    examples/rti-demo
 Registry:       ghcr.io/netbeheer-nederland/iec61850-websocket
 Local name:     netbeheer-nederland/iec61850-websocket/rti-<image>:latest
+                (plugins: .../dr-panel:latest)
 Platform:       linux/arm64/v8 (the only arch the Pis run)
 ```
 
@@ -32,7 +33,7 @@ one-to-one onto the names the compose files already use:
 |------------------------------------------------------|--------------------------------------------------------------|
 | `netbeheer-nederland/iec61850-websocket/rti-fsp`     | `ghcr.io/netbeheer-nederland/iec61850-websocket/rti-fsp`     |
 | `netbeheer-nederland/iec61850-websocket/rti-so`      | `ghcr.io/netbeheer-nederland/iec61850-websocket/rti-so`      |
-| `netbeheer-nederland/iec61850-websocket/rti-io`      | `ghcr.io/netbeheer-nederland/iec61850-websocket/rti-io`      |
+| `netbeheer-nederland/iec61850-websocket/dr-panel`    | `ghcr.io/netbeheer-nederland/iec61850-websocket/dr-panel`    |
 
 `modules/fsp/docker-compose.yml` and `modules/so/docker-compose.yml` refer to
 the **local** name. Without a registry host, Docker reads that as a Docker Hub
@@ -99,7 +100,7 @@ Dockerfiles and contexts are the ones that script uses:
 |-------|-------------------------------------------------------------|----------------------------------------------|
 | `fsp` | `examples/rti-demo/modules/fsp/docker/Dockerfile`           | repo root                                    |
 | `so`  | `examples/rti-demo/modules/so/docker/Dockerfile`            | repo root                                    |
-| `io`  | `examples/rti-plugins/rpi_io/docker/Dockerfile`             | `examples/rti-plugins/rpi_io`                |
+| `dr-panel` | `examples/rti-plugins/dr_panel/docker/Dockerfile`      | `examples/rti-plugins/dr_panel`              |
 
 Run `scripts/build-rti-demo.sh` once first: it creates the clone (default
 `${TMPDIR:-/tmp}/iec61850-websocket-clone`), registers QEMU and creates the
@@ -119,8 +120,9 @@ docker buildx build --builder rti-builder --platform linux/arm64/v8 \
   --push "${CLONE_DIR}"
 ```
 
-For `io`, use its Dockerfile and `"${CLONE_DIR}/examples/rti-plugins/rpi_io"`
-as the context.
+For `dr-panel`, use its Dockerfile and
+`"${CLONE_DIR}/examples/rti-plugins/dr_panel"` as the context, and tag it
+`${REGISTRY}/dr-panel` (a plugin keeps its own name, without `rti-`).
 
 The `org.opencontainers.image.source` label/annotation **links the package to
 the upstream repository**. A linked package shows up on the repo's page and
@@ -157,7 +159,7 @@ on:
     branches: [initial-refactor]
     paths:
       - "examples/rti-demo/**"
-      - "examples/rti-plugins/rpi_io/**"
+      - "examples/rti-plugins/dr_panel/**"
       - "src/**"
       - "uv.lock"
       - ".github/workflows/rti-demo-images.yml"
@@ -175,15 +177,15 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - image: fsp
+          - image: rti-fsp
             dockerfile: examples/rti-demo/modules/fsp/docker/Dockerfile
             context: .
-          - image: so
+          - image: rti-so
             dockerfile: examples/rti-demo/modules/so/docker/Dockerfile
             context: .
-          - image: io
-            dockerfile: examples/rti-plugins/rpi_io/docker/Dockerfile
-            context: examples/rti-plugins/rpi_io
+          - image: dr-panel
+            dockerfile: examples/rti-plugins/dr_panel/docker/Dockerfile
+            context: examples/rti-plugins/dr_panel
     steps:
       - uses: actions/checkout@v4
 
@@ -198,7 +200,7 @@ jobs:
       - id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/netbeheer-nederland/iec61850-websocket/rti-${{ matrix.image }}
+          images: ghcr.io/netbeheer-nederland/iec61850-websocket/${{ matrix.image }}
           tags: |
             type=raw,value=latest,enable=${{ github.ref_name == 'initial-refactor' }}
             type=sha,prefix=sha-
@@ -213,8 +215,8 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           annotations: ${{ steps.meta.outputs.annotations }}
-          cache-from: type=gha,scope=rti-${{ matrix.image }}
-          cache-to: type=gha,mode=max,scope=rti-${{ matrix.image }}
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
 ```
 
 Notes:
@@ -252,12 +254,18 @@ the arm64 images and write the archives `deploy-rti-demo.sh` expects, under the
 local names the compose files use. `scripts/pull-rti-demo.sh` does this:
 
 ```bash
-scripts/pull-rti-demo.sh                        # all three, tag latest
+scripts/pull-rti-demo.sh                        # fsp and so, tag latest
 scripts/pull-rti-demo.sh --tag sha-1a2b3c4 fsp  # one image, pinned build
+scripts/build-rti-demo.sh plugins               # dr-panel and dr-leds
 scripts/deploy-rti-demo.sh --start --role so 192.168.100.97
 ```
 
-It also checks that each pulled image is arm64. For a Pi that is not flashed
+It also checks that each pulled image is arm64. It doesn't pull the plugins
+`dr-panel` and `dr-leds`, which every role runs: `dr-leds` isn't published,
+and `dr-panel` replaces the published `rti-io` (the IO server from before it
+became the plugin `dr_panel`), which the role compose files no longer use.
+Build them with `scripts/build-rti-demo.sh plugins`, which writes them to the
+same directory, where deploying picks them up. For a Pi that is not flashed
 yet, `setup/pi-user-data.sh --role so|fsp` writes the same archives into a
 new Pi image instead, and the Pi starts them on first boot (see
 [setup/README.md](../setup/README.md#writing-an-image-to-an-sd-card-or-ssd)).
@@ -271,7 +279,7 @@ OUT="dist/rti-images-arm64"
 TAG="latest"            # or sha-<commit> to pin a build
 mkdir -p "${OUT}"
 
-for image in rti-fsp rti-so rti-io; do
+for image in rti-fsp rti-so; do
   docker pull --platform linux/arm64/v8 "${REGISTRY}/${image}:${TAG}"
   docker tag "${REGISTRY}/${image}:${TAG}" "${LOCAL}/${image}:latest"
   docker save "${LOCAL}/${image}:latest" | gzip > "${OUT}/${image}.tar.gz.partial"
@@ -295,14 +303,15 @@ echo "<read-only token>" | docker login ghcr.io -u <github-user> --password-stdi
 ```
 
 Then, in `~/rti` (where `deploy-rti-demo.sh` or the first boot puts the compose
-file), for each
-image the role needs (`so`: `rti-so rti-io`; `fsp`: `rti-fsp rti-io`):
+file), for the role's base image (`so`: `rti-so`; `fsp`: `rti-fsp`). The
+plugins `dr-panel` and `dr-leds` aren't published, so they must already be
+loaded, from the archives a deploy or the first boot brought:
 
 ```bash
 REGISTRY="ghcr.io/netbeheer-nederland/iec61850-websocket"
 LOCAL="netbeheer-nederland/iec61850-websocket"
 
-for image in rti-so rti-io; do
+for image in rti-so; do
   docker pull "${REGISTRY}/${image}:latest"
   docker tag "${REGISTRY}/${image}:latest" "${LOCAL}/${image}:latest"
 done
@@ -353,11 +362,11 @@ Or let the workflow clean up after itself by adding a job such as:
       packages: write
     strategy:
       matrix:
-        image: [fsp, so, io]
+        image: [rti-fsp, rti-so, dr-panel]
     steps:
       - uses: actions/delete-package-versions@v5
         with:
-          package-name: iec61850-websocket/rti-${{ matrix.image }}
+          package-name: iec61850-websocket/${{ matrix.image }}
           package-type: container
           min-versions-to-keep: 10
           ignore-versions: '^latest$'
