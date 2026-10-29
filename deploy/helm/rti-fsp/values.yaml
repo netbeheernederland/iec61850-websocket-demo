@@ -5,7 +5,7 @@ nameOverride: ""
 fullnameOverride: ""
 
 image:
-  repository: ghcr.io/netbeheer-nederland/iec61850-websocket/rti-fsp
+  repository: ghcr.io/netbeheernederland/iec61850-websocket/rti-fsp
   # Pin a build (sha-<commit>) per installation: ArgoCD only rolls out a new
   # image when this value changes.
   tag: latest
@@ -55,7 +55,7 @@ service:
 drPanel:
   enabled: false
   image:
-    repository: ghcr.io/netbeheer-nederland/iec61850-websocket/dr-panel
+    repository: ghcr.io/netbeheernederland/iec61850-websocket/dr-panel
     tag: latest
     pullPolicy: IfNotPresent
   port: 9000

@@ -44,8 +44,8 @@ Key differences from the root compose stack:
 * Images built by the root Compose file are named
   `${RTI_IMAGE_REPO}/rti-<role>:${RTI_IMAGE_TAG}`, where `<role>` is `bff`,
   `hmi`, `so` or `fsp`. The default repository is
-  `netbeheer-nederland/iec61850-websocket`; published images use
-  `ghcr.io/netbeheer-nederland/iec61850-websocket`. The default tag is `latest`.
+  `netbeheernederland/iec61850-websocket`; published images use
+  `ghcr.io/netbeheernederland/iec61850-websocket`. The default tag is `latest`.
   `build-tarballs.sh` reads these names and automatically tags the images as
   `rti-<role>:latest` before saving them, matching the fleet's
   Compose files and existing tarball filenames.
@@ -160,7 +160,7 @@ ssh rti@192.168.150.2 'sudo cloud-init status --wait && docker ps'
 `build-rti-demo.sh` clones the upstream `iec61850-websocket` repository
 (branch `initial-refactor`), builds each image with `docker buildx` and
 loads it into the host's Docker as
-`netbeheer-nederland/iec61850-websocket/rti-<role>:latest` (plugins as
+`netbeheernederland/iec61850-websocket/rti-<role>:latest` (plugins as
 `.../dr-leds:latest` and `.../dr-panel:latest`), the names
 `build-tarballs.sh` reads by default. Without image names it builds all of
 them, including `dr-panel`, which the VMs don't use. Without `--platform` it
@@ -171,7 +171,7 @@ the VM fleet does not use them.
 To export images from another repository or tag, select them explicitly:
 
 ```bash
-RTI_IMAGE_REPO=ghcr.io/netbeheer-nederland/iec61850-websocket \
+RTI_IMAGE_REPO=ghcr.io/netbeheernederland/iec61850-websocket \
 RTI_IMAGE_TAG=latest ./build-tarballs.sh
 ```
 

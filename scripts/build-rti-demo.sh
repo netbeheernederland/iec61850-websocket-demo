@@ -35,7 +35,7 @@ REPO_URL="https://github.com/Netbeheer-Nederland/iec61850-websocket.git"
 BRANCH="initial-refactor"
 EXAMPLE_SUBDIR="examples/rti-demo"
 
-IMAGE_BASE="netbeheer-nederland/iec61850-websocket"
+IMAGE_BASE="netbeheernederland/iec61850-websocket"
 DEFAULT_IMAGES=(fsp so bff hmi plugins)
 PLUGINS_SUBDIR="examples/rti-plugins"
 

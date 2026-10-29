@@ -17,8 +17,8 @@ The examples assume:
 Upstream repo:  https://github.com/Netbeheer-Nederland/iec61850-websocket
 Branch:         initial-refactor
 Example dir:    examples/rti-demo
-Registry:       ghcr.io/netbeheer-nederland/iec61850-websocket
-Local name:     netbeheer-nederland/iec61850-websocket/rti-<image>:latest
+Registry:       ghcr.io/netbeheernederland/iec61850-websocket
+Local name:     netbeheernederland/iec61850-websocket/rti-<image>:latest
                 (plugins: .../dr-panel:latest)
 Platform:       linux/arm64/v8 (the only arch the Pis run)
 ```
@@ -31,9 +31,9 @@ one-to-one onto the names the compose files already use:
 
 | Local name (compose files, tarballs)                 | GHCR name                                                    |
 |------------------------------------------------------|--------------------------------------------------------------|
-| `netbeheer-nederland/iec61850-websocket/rti-fsp`     | `ghcr.io/netbeheer-nederland/iec61850-websocket/rti-fsp`     |
-| `netbeheer-nederland/iec61850-websocket/rti-so`      | `ghcr.io/netbeheer-nederland/iec61850-websocket/rti-so`      |
-| `netbeheer-nederland/iec61850-websocket/dr-panel`    | `ghcr.io/netbeheer-nederland/iec61850-websocket/dr-panel`    |
+| `netbeheernederland/iec61850-websocket/rti-fsp`     | `ghcr.io/netbeheernederland/iec61850-websocket/rti-fsp`     |
+| `netbeheernederland/iec61850-websocket/rti-so`      | `ghcr.io/netbeheernederland/iec61850-websocket/rti-so`      |
+| `netbeheernederland/iec61850-websocket/dr-panel`    | `ghcr.io/netbeheernederland/iec61850-websocket/dr-panel`    |
 
 `modules/fsp/docker-compose.yml` and `modules/so/docker-compose.yml` refer to
 the **local** name. Without a registry host, Docker reads that as a Docker Hub
@@ -108,7 +108,7 @@ Run `scripts/build-rti-demo.sh` once first: it creates the clone (default
 
 ```bash
 CLONE_DIR="${TMPDIR:-/tmp}/iec61850-websocket-clone"
-REGISTRY="ghcr.io/netbeheer-nederland/iec61850-websocket"
+REGISTRY="ghcr.io/netbeheernederland/iec61850-websocket"
 SHA="$(git -C "${CLONE_DIR}" rev-parse --short=7 HEAD)"
 
 docker buildx build --builder rti-builder --platform linux/arm64/v8 \
@@ -136,8 +136,8 @@ to the organisation and must be shared by hand.
 >
 > ```bash
 > scripts/retag-images.sh --tag "sha-${SHA}" fsp
-> docker push ghcr.io/netbeheer-nederland/iec61850-websocket/rti-fsp:latest
-> docker push ghcr.io/netbeheer-nederland/iec61850-websocket/rti-fsp:sha-${SHA}
+> docker push ghcr.io/netbeheernederland/iec61850-websocket/rti-fsp:latest
+> docker push ghcr.io/netbeheernederland/iec61850-websocket/rti-fsp:sha-${SHA}
 > ```
 >
 > It shows each image's architecture: check it before pushing over
@@ -200,7 +200,7 @@ jobs:
       - id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/netbeheer-nederland/iec61850-websocket/${{ matrix.image }}
+          images: ghcr.io/netbeheernederland/iec61850-websocket/${{ matrix.image }}
           tags: |
             type=raw,value=latest,enable=${{ github.ref_name == 'initial-refactor' }}
             type=sha,prefix=sha-
@@ -273,8 +273,8 @@ new Pi image instead, and the Pi starts them on first boot (see
 By hand, the same steps are:
 
 ```bash
-REGISTRY="ghcr.io/netbeheer-nederland/iec61850-websocket"
-LOCAL="netbeheer-nederland/iec61850-websocket"
+REGISTRY="ghcr.io/netbeheernederland/iec61850-websocket"
+LOCAL="netbeheernederland/iec61850-websocket"
 OUT="dist/rti-images-arm64"
 TAG="latest"            # or sha-<commit> to pin a build
 mkdir -p "${OUT}"
@@ -308,8 +308,8 @@ plugins `dr-panel` and `dr-leds` aren't published, so they must already be
 loaded, from the archives a deploy or the first boot brought:
 
 ```bash
-REGISTRY="ghcr.io/netbeheer-nederland/iec61850-websocket"
-LOCAL="netbeheer-nederland/iec61850-websocket"
+REGISTRY="ghcr.io/netbeheernederland/iec61850-websocket"
+LOCAL="netbeheernederland/iec61850-websocket"
 
 for image in rti-so; do
   docker pull "${REGISTRY}/${image}:latest"
@@ -327,7 +327,7 @@ the archives first, or start with `docker compose up -d` only.
 
 ```bash
 # Tags and platforms of one image
-docker buildx imagetools inspect ghcr.io/netbeheer-nederland/iec61850-websocket/rti-fsp:latest
+docker buildx imagetools inspect ghcr.io/netbeheernederland/iec61850-websocket/rti-fsp:latest
 
 # All versions of a package (organisation-owned)
 gh api /orgs/Netbeheer-Nederland/packages/container/iec61850-websocket%2Frti-fsp/versions \
@@ -383,6 +383,6 @@ not delete layers a kept tag still needs.
 | `denied: denied` / `unauthorized` on pull                      | Not logged in, token lacks `read:packages`, or token not SSO-authorised for the organisation.                            |
 | `403 Forbidden` on push from Actions                           | Workflow lacks `permissions: packages: write`, or the repo has no write access to an existing package (section 5).       |
 | `invalid reference format: repository name must be lowercase`  | Owner written as `Netbeheer-Nederland`; GHCR names must be lower case.                                                    |
-| `pull access denied for netbeheer-nederland/…` on `compose up` | The GHCR image was pulled but not re-tagged to the local name the compose file uses (section 7).                         |
+| `pull access denied for netbeheernederland/…` on `compose up` | The GHCR image was pulled but not re-tagged to the local name the compose file uses (section 7).                         |
 | `exec format error` when a container starts                    | The image is amd64; rebuild or pull with `linux/arm64/v8`.                                                               |
 | Pi starts an old version after pulling                         | `load-and-start.sh` re-loaded old `*.tar.gz` archives in `~/rti` (section 7b).                                           |

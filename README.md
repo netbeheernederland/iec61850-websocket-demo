@@ -29,8 +29,8 @@ models and demo playbooks, for three deployment targets.
 | `cert-generator` | Alpine      | One-off: mints the CA and TLS certificates        | —             |
 
 Images are named `${RTI_IMAGE_REPO}/rti-<role>:${RTI_IMAGE_TAG}`, by default
-`netbeheer-nederland/iec61850-websocket/rti-<role>:latest`. Published images
-live under `ghcr.io/netbeheer-nederland/iec61850-websocket`.
+`netbeheernederland/iec61850-websocket/rti-<role>:latest`. Published images
+live under `ghcr.io/netbeheernederland/iec61850-websocket`.
 
 ## Quick start (single host)
 
@@ -39,7 +39,7 @@ Requires Docker with Compose v2 and the images available locally (see
 Compose at the registry:
 
 ```bash
-export RTI_IMAGE_REPO=ghcr.io/netbeheer-nederland/iec61850-websocket   # optional
+export RTI_IMAGE_REPO=ghcr.io/netbeheernederland/iec61850-websocket   # optional
 docker compose up -d
 ```
 

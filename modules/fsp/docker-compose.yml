@@ -7,7 +7,7 @@
 services:
   rti-fsp:
     container_name: rti-fsp
-    image: netbeheer-nederland/iec61850-websocket/rti-fsp:latest
+    image: netbeheernederland/iec61850-websocket/rti-fsp:latest
     ports:
       - "${FSP_PORT:-5001}:${FSP_PORT:-5001}"
     environment:
@@ -40,7 +40,7 @@ services:
   # health check are set by its Dockerfile; nothing is published.
   dr-leds:
     container_name: dr-leds
-    image: netbeheer-nederland/iec61850-websocket/dr-leds:latest
+    image: netbeheernederland/iec61850-websocket/dr-leds:latest
     # Started when COMPOSE_PROFILES in .env names it (--plugins)
     profiles: [dr-leds]
     networks:
@@ -49,7 +49,7 @@ services:
 
   dr-panel:
     container_name: dr-panel
-    image: netbeheer-nederland/iec61850-websocket/dr-panel:latest
+    image: netbeheernederland/iec61850-websocket/dr-panel:latest
     # Started when COMPOSE_PROFILES in .env names it (--plugins)
     profiles: [dr-panel]
     ports:

@@ -1,6 +1,6 @@
 services:
   rti-so:
-    image: netbeheer-nederland/iec61850-websocket/rti-so:latest
+    image: netbeheernederland/iec61850-websocket/rti-so:latest
     container_name: rti-so
     ports:
       - "5000:5000"
@@ -28,7 +28,7 @@ services:
       - "rti.port=5000"
 
   dr-panel:
-    image: netbeheer-nederland/iec61850-websocket/dr-panel:latest
+    image: netbeheernederland/iec61850-websocket/dr-panel:latest
     # Started when COMPOSE_PROFILES in .env names it (--plugins)
     profiles: [dr-panel]
     container_name: dr-panel
@@ -73,7 +73,7 @@ services:
   # The sample plugin: two simulated LEDs, no hardware. Port 8099 and the
   # health check are set by its Dockerfile; nothing is published.
   dr-leds:
-    image: netbeheer-nederland/iec61850-websocket/dr-leds:latest
+    image: netbeheernederland/iec61850-websocket/dr-leds:latest
     # Started when COMPOSE_PROFILES in .env names it (--plugins)
     profiles: [dr-leds]
     container_name: dr-leds

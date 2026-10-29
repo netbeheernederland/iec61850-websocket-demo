@@ -91,7 +91,7 @@ services:
 
   # BFF Server
   rti-bff:
-    image: ${RTI_IMAGE_REPO:-netbeheer-nederland/iec61850-websocket}/rti-bff:${RTI_IMAGE_TAG:-latest}
+    image: ${RTI_IMAGE_REPO:-netbeheernederland/iec61850-websocket}/rti-bff:${RTI_IMAGE_TAG:-latest}
     container_name: rti-bff
     ports:
       - "3000:3000"
@@ -116,7 +116,7 @@ services:
 
   # HMI Web Server
   rti-hmi:
-    image: ${RTI_IMAGE_REPO:-netbeheer-nederland/iec61850-websocket}/rti-hmi:${RTI_IMAGE_TAG:-latest}
+    image: ${RTI_IMAGE_REPO:-netbeheernederland/iec61850-websocket}/rti-hmi:${RTI_IMAGE_TAG:-latest}
     container_name: rti-hmi
     ports:
       - "80:80"
@@ -132,7 +132,7 @@ services:
 
   # RTI SO (Acsi-Client)
   rti-so:
-    image: ${RTI_IMAGE_REPO:-netbeheer-nederland/iec61850-websocket}/rti-so:${RTI_IMAGE_TAG:-latest}
+    image: ${RTI_IMAGE_REPO:-netbeheernederland/iec61850-websocket}/rti-so:${RTI_IMAGE_TAG:-latest}
     container_name: rti-so
 #    ports:
 #      - "5000:5000"
@@ -155,7 +155,7 @@ services:
 
   # RTI-FSP (Acsi-Server)
   rti-fsp01:
-    image: ${RTI_IMAGE_REPO:-netbeheer-nederland/iec61850-websocket}/rti-fsp:${RTI_IMAGE_TAG:-latest}
+    image: ${RTI_IMAGE_REPO:-netbeheernederland/iec61850-websocket}/rti-fsp:${RTI_IMAGE_TAG:-latest}
     container_name: rti-fsp01
     ports:
       - "5001:5001"
@@ -185,7 +185,7 @@ services:
 
   # Second FSP instance
   rti-fsp02:
-    image: ${RTI_IMAGE_REPO:-netbeheer-nederland/iec61850-websocket}/rti-fsp:${RTI_IMAGE_TAG:-latest}
+    image: ${RTI_IMAGE_REPO:-netbeheernederland/iec61850-websocket}/rti-fsp:${RTI_IMAGE_TAG:-latest}
     container_name: rti-fsp02
     ports:
       - "5005:5005"  # Map to different host port, same container port

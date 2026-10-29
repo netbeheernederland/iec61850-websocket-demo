@@ -43,7 +43,7 @@ can run side by side and be added, changed and removed reproducibly?
   on the same node and never start a second copy that competes for the
   devices.
 * **Images available from a registry since 2026-10.** The arm64 images can
-  now be pulled from `ghcr.io/netbeheer-nederland/iec61850-websocket`, which
+  now be pulled from `ghcr.io/netbeheernederland/iec61850-websocket`, which
   removes the need to ship archives for machines that can reach the
   registry. A Kubernetes cluster pulls images rather than loading tarballs.
 

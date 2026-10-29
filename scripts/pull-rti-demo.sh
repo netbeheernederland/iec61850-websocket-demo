@@ -12,7 +12,7 @@
 #               (default: RTI_TAG, else latest)
 #
 # The images are re-tagged to the local names the compose files use
-# (netbeheer-nederland/iec61850-websocket/rti-<image>:latest) before saving,
+# (netbeheernederland/iec61850-websocket/rti-<image>:latest) before saving,
 # so deploy-rti-demo.sh and load-and-start.sh work unchanged.
 #
 # Private packages need a docker login first:
@@ -20,7 +20,7 @@
 #
 # Environment:
 #   RTI_REGISTRY   registry and namespace to pull from
-#                  (default: ghcr.io/netbeheer-nederland/iec61850-websocket)
+#                  (default: ghcr.io/netbeheernederland/iec61850-websocket)
 #   RTI_TAG        default for --tag
 #   RTI_IMAGE_DIR  where the archives are written (default: dist/rti-images-arm64)
 set -euo pipefail
@@ -29,11 +29,11 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-RTI_REGISTRY="${RTI_REGISTRY:-ghcr.io/netbeheer-nederland/iec61850-websocket}"
+RTI_REGISTRY="${RTI_REGISTRY:-ghcr.io/netbeheernederland/iec61850-websocket}"
 TAG="${RTI_TAG:-latest}"
 
 # Local name, as used by the compose files and build-rti-demo.sh
-IMAGE_BASE="netbeheer-nederland/iec61850-websocket"
+IMAGE_BASE="netbeheernederland/iec61850-websocket"
 ALL_IMAGES=(fsp so)
 
 PLATFORM="linux/arm64/v8"

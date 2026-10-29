@@ -15,7 +15,7 @@ The examples assume:
 ```text
 Cluster:       k3s on the Pis (arm64 nodes), ArgoCD in namespace argocd
 Repository:    git@gitlab.apps.mypeters.eu:architecture/iec61850-websocket-demo.git, branch main
-Images:        ghcr.io/netbeheer-nederland/iec61850-websocket/{rti-so,rti-fsp,dr-panel}
+Images:        ghcr.io/netbeheernederland/iec61850-websocket/{rti-so,rti-fsp,dr-panel}
                (see docker-images-github.md)
 Namespace:     rti-demo
 ```

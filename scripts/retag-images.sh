@@ -16,14 +16,14 @@
 #
 # Environment:
 #   RTI_REGISTRY   registry and namespace to tag for
-#                  (default: ghcr.io/netbeheer-nederland/iec61850-websocket)
+#                  (default: ghcr.io/netbeheernederland/iec61850-websocket)
 set -euo pipefail
 
 # --- Configuration -----------------------------------------------------
-RTI_REGISTRY="${RTI_REGISTRY:-ghcr.io/netbeheer-nederland/iec61850-websocket}"
+RTI_REGISTRY="${RTI_REGISTRY:-ghcr.io/netbeheernederland/iec61850-websocket}"
 
 # Local name, as used by the compose files and build-rti-demo.sh
-IMAGE_BASE="netbeheer-nederland/iec61850-websocket"
+IMAGE_BASE="netbeheernederland/iec61850-websocket"
 ALL_IMAGES=(fsp so bff hmi dr-panel dr-leds)
 
 # The image's name: rti-<image> for a base image, the plugin's own name
