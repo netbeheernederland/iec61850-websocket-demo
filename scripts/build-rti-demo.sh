@@ -31,7 +31,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-REPO_URL="https://github.com/Netbeheer-Nederland/iec61850-websocket.git"
+REPO_URL="https://github.com/netbeheernederland/iec61850-websocket.git"
 BRANCH="initial-refactor"
 EXAMPLE_SUBDIR="examples/rti-demo"
 
@@ -78,6 +78,8 @@ RTI_IMAGE_DIR="${RTI_IMAGE_DIR:-${REPO_ROOT}/dist/rti-images-${ARCH}}"
 # --- Clone (first run) or update (subsequent runs) -----------------------
 if [ -d "${CLONE_DIR}/.git" ]; then
   echo "Reusing existing clone at ${CLONE_DIR}, updating..."
+  # Follow REPO_URL changes, such as the GitHub organisation's rename
+  git -C "${CLONE_DIR}" remote set-url origin "${REPO_URL}"
   git -C "${CLONE_DIR}" fetch origin "${BRANCH}"
   git -C "${CLONE_DIR}" checkout "${BRANCH}"
   git -C "${CLONE_DIR}" reset --hard "origin/${BRANCH}"

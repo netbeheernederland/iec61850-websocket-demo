@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 # iec61850-websocket demo
 
 Deployment and demo material for the **rti-demo** of
-[iec61850-websocket](https://github.com/Netbeheer-Nederland/iec61850-websocket):
+[iec61850-websocket](https://github.com/netbeheernederland/iec61850-websocket):
 a system operator (**SO**, ACSI client) talking IEC 61850 over WebSocket to
 flexibility service providers (**FSPs**, ACSI servers), watched and driven
 from a web HMI.

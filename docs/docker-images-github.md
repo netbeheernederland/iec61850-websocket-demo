@@ -14,7 +14,7 @@ directly.
 The examples assume:
 
 ```text
-Upstream repo:  https://github.com/Netbeheer-Nederland/iec61850-websocket
+Upstream repo:  https://github.com/netbeheernederland/iec61850-websocket
 Branch:         initial-refactor
 Example dir:    examples/rti-demo
 Registry:       ghcr.io/netbeheernederland/iec61850-websocket
@@ -62,7 +62,7 @@ fine-grained tokens cannot be used for the container registry.
 
 Create one under *GitHub → Settings → Developer settings → Personal access
 tokens → Tokens (classic)*. If the organisation uses SSO, authorise the token
-for `Netbeheer-Nederland` afterwards (*Configure SSO* next to the token).
+for `netbeheernederland` afterwards (*Configure SSO* next to the token).
 
 If you use the GitHub CLI, you can add the scope to its token instead of
 creating a new one:
@@ -115,8 +115,8 @@ docker buildx build --builder rti-builder --platform linux/arm64/v8 \
   -f "${CLONE_DIR}/examples/rti-demo/modules/fsp/docker/Dockerfile" \
   -t "${REGISTRY}/rti-fsp:latest" \
   -t "${REGISTRY}/rti-fsp:sha-${SHA}" \
-  --label org.opencontainers.image.source=https://github.com/Netbeheer-Nederland/iec61850-websocket \
-  --annotation "index:org.opencontainers.image.source=https://github.com/Netbeheer-Nederland/iec61850-websocket" \
+  --label org.opencontainers.image.source=https://github.com/netbeheernederland/iec61850-websocket \
+  --annotation "index:org.opencontainers.image.source=https://github.com/netbeheernederland/iec61850-websocket" \
   --push "${CLONE_DIR}"
 ```
 
@@ -147,7 +147,7 @@ to the organisation and must be shared by hand.
 ## 5. Build and push with GitHub Actions
 
 Because this repository lives on GitLab, the workflow belongs in the
-**upstream** GitHub repo, `Netbeheer-Nederland/iec61850-websocket`, as for
+**upstream** GitHub repo, `netbeheernederland/iec61850-websocket`, as for
 example `.github/workflows/rti-demo-images.yml`. It builds the three images on
 every push to `initial-refactor` that touches the example or the shared core:
 
@@ -330,7 +330,7 @@ the archives first, or start with `docker compose up -d` only.
 docker buildx imagetools inspect ghcr.io/netbeheernederland/iec61850-websocket/rti-fsp:latest
 
 # All versions of a package (organisation-owned)
-gh api /orgs/Netbeheer-Nederland/packages/container/iec61850-websocket%2Frti-fsp/versions \
+gh api /orgs/netbeheernederland/packages/container/iec61850-websocket%2Frti-fsp/versions \
   -q '.[] | "\(.id)\t\(.metadata.container.tags | join(","))\t\(.created_at)"'
 ```
 
@@ -349,7 +349,7 @@ Every CI build adds a `sha-…` version. Delete old ones by hand under
 
 ```bash
 gh api -X DELETE \
-  /orgs/Netbeheer-Nederland/packages/container/iec61850-websocket%2Frti-fsp/versions/<version-id>
+  /orgs/netbeheernederland/packages/container/iec61850-websocket%2Frti-fsp/versions/<version-id>
 ```
 
 Or let the workflow clean up after itself by adding a job such as:
@@ -382,7 +382,7 @@ not delete layers a kept tag still needs.
 |----------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------|
 | `denied: denied` / `unauthorized` on pull                      | Not logged in, token lacks `read:packages`, or token not SSO-authorised for the organisation.                            |
 | `403 Forbidden` on push from Actions                           | Workflow lacks `permissions: packages: write`, or the repo has no write access to an existing package (section 5).       |
-| `invalid reference format: repository name must be lowercase`  | Owner written as `Netbeheer-Nederland`; GHCR names must be lower case.                                                    |
+| `invalid reference format: repository name must be lowercase`  | Owner written as `NetbeheerNederland`; GHCR names must be lower case.                                                    |
 | `pull access denied for netbeheernederland/…` on `compose up` | The GHCR image was pulled but not re-tagged to the local name the compose file uses (section 7).                         |
 | `exec format error` when a container starts                    | The image is amd64; rebuild or pull with `linux/arm64/v8`.                                                               |
 | Pi starts an old version after pulling                         | `load-and-start.sh` re-loaded old `*.tar.gz` archives in `~/rti` (section 7b).                                           |
