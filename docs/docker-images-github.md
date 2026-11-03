@@ -143,6 +143,16 @@ to the organisation and must be shared by hand.
 > It shows each image's architecture: check it before pushing over
 > `latest`. The package is then not linked to the repo; link it once in the
 > package settings (*Connect repository*).
+>
+> `scripts/push-rti-demo.sh` does the tagging and the pushing in one go. It
+> checks that every image is arm64 (or `--arch`) and that you are logged in
+> to `ghcr.io` before it pushes anything:
+>
+> ```bash
+> scripts/push-rti-demo.sh --dry-run --tag "sha-${SHA}"   # show what would be pushed
+> scripts/push-rti-demo.sh --tag "sha-${SHA}" fsp so      # tag and push two images
+> scripts/push-rti-demo.sh --no-latest --tag test hmi     # leave latest alone
+> ```
 
 ## 5. Build and push with GitHub Actions
 
