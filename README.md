@@ -82,7 +82,8 @@ See [playbooks/README.md](playbooks/README.md) and
 | Kubernetes             | `deploy/` (Helm charts + ArgoCD ApplicationSets)              | [docs/kubernetes-argocd.md](docs/kubernetes-argocd.md)   |
 
 For Raspberry Pis, `scripts/build-rti-demo.sh` (or `scripts/pull-rti-demo.sh`)
-produces arm64 image archives and `scripts/deploy-rti-demo.sh` copies them,
+produces arm64 image archives (`build-rti-demo.sh` also amd64 ones, unless
+given `--platform linux/arm64/v8`) and `scripts/deploy-rti-demo.sh` copies them,
 with a role's compose file, to each Pi. `build-rti-demo.sh` builds the base
 images `rti-fsp`, `rti-so`, `rti-bff` and `rti-hmi` and every upstream plugin
 in `examples/rti-plugins/`: the IO plugin `dr-panel` and the sample plugin

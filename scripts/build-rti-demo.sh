@@ -3,13 +3,14 @@
 # into the local Docker and save them as .tar.gz archives for
 # deploy-rti-demo.sh.
 #
-# Usage: build-rti-demo.sh [--platform PLATFORM] [fsp] [so] [bff] [hmi]
-#                          [plugins] [PLUGIN ...]
+# Usage: build-rti-demo.sh [--platform PLATFORM[,PLATFORM]] [fsp] [so] [bff]
+#                          [hmi] [plugins] [PLUGIN ...]
 #        (no images: all of them, the base images and the plugins)
 #
-#   --platform PLATFORM   target platform (default: linux/arm64/v8, the Pis).
-#                         linux/amd64 builds the images for the setup/ VM
-#                         fleet, then run setup/build-tarballs.sh.
+#   --platform PLATFORM   target platform(s), comma-separated (default:
+#                         linux/amd64,linux/arm64/v8, both). linux/arm64/v8
+#                         is for the Pis; linux/amd64 for the setup/ VM fleet,
+#                         then run setup/build-tarballs.sh.
 #   fsp so bff hmi        the base images, built as rti-<image>
 #   plugins               every plugin in upstream examples/rti-plugins/ that
 #                         has a docker/Dockerfile: dr-panel and dr-leds
@@ -17,10 +18,16 @@
 #
 # A plugin is built under its own name (dr-panel, not rti-dr-panel), as in
 # upstream's compose files. Every archive is saved as <name>.tar.gz in the
-# archive directory.
+# platform's archive directory.
+#
+# The platforms are built one after the other, in the order given, and each
+# build is loaded into the local Docker under the same names: the last
+# platform is the one left loaded. The default builds arm64 last, so the
+# local images are the Pis' (as push-rti-demo.sh expects); build-tarballs.sh
+# needs amd64 loaded, so run --platform linux/amd64 alone before it.
 #
 # Environment:
-#   RTI_IMAGE_DIR  where the archives are written
+#   RTI_IMAGE_DIR  where the archives are written, for one platform only
 #                  (default: dist/rti-images-<arch>, e.g. dist/rti-images-arm64)
 #   CLONE_DIR      persistent clone of the upstream repo
 #   VITE_BFF_HOST, VITE_BFF_PORT
@@ -39,7 +46,7 @@ IMAGE_BASE="netbeheernederland/iec61850-websocket"
 DEFAULT_IMAGES=(fsp so bff hmi plugins)
 PLUGINS_SUBDIR="examples/rti-plugins"
 
-PLATFORM="linux/arm64/v8"
+PLATFORMS="linux/amd64,linux/arm64/v8"
 BUILDX_BUILDER="rti-builder"
 
 # Persistent clone, reused across runs instead of re-cloning every time
@@ -61,7 +68,7 @@ while [ $# -gt 0 ]; do
         echo "--platform needs a value" >&2
         usage
       fi
-      PLATFORM="$2"; shift ;;
+      PLATFORMS="$2"; shift ;;
     -*) echo "Unknown option: $1" >&2; usage ;;
     # Plugin names are only known after the clone; checked there.
     *) IMAGES+=("$1") ;;
@@ -70,10 +77,18 @@ while [ $# -gt 0 ]; do
 done
 [ ${#IMAGES[@]} -eq 0 ] && IMAGES=("${DEFAULT_IMAGES[@]}")
 
-# Archives are kept per architecture (linux/arm64/v8 -> arm64), so builds
-# for different platforms never replace each other's archives.
-ARCH="${PLATFORM#*/}"; ARCH="${ARCH%%/*}"
-RTI_IMAGE_DIR="${RTI_IMAGE_DIR:-${REPO_ROOT}/dist/rti-images-${ARCH}}"
+IFS=, read -r -a PLATFORM_LIST <<< "${PLATFORMS}"
+for platform in "${PLATFORM_LIST[@]}"; do
+  case "${platform}" in
+    linux/amd64|linux/arm64|linux/arm64/v8) ;;
+    *) echo "Unsupported platform: ${platform} (use linux/amd64, linux/arm64/v8)" >&2; exit 1 ;;
+  esac
+done
+# One RTI_IMAGE_DIR for several platforms would mix their archives
+if [ -n "${RTI_IMAGE_DIR:-}" ] && [ ${#PLATFORM_LIST[@]} -gt 1 ]; then
+  echo "RTI_IMAGE_DIR holds one platform's archives; pass one --platform with it" >&2
+  exit 1
+fi
 
 # --- Clone (first run) or update (subsequent runs) -----------------------
 if [ -d "${CLONE_DIR}/.git" ]; then
@@ -149,11 +164,17 @@ for image in "${SELECTED[@]}"; do
 done
 
 # --- Register QEMU emulation for cross-arch builds (idempotent) ------------
-if [[ "${PLATFORM}" == linux/arm64* && "$(uname -m)" != aarch64 ]] \
-    && [ ! -e /proc/sys/fs/binfmt_misc/qemu-aarch64 ]; then
-  echo "Registering QEMU binfmt handlers for cross-arch builds..."
-  docker run --privileged --rm tonistiigi/binfmt --install arm64
-fi
+HOST_ARCH="$(uname -m)"
+for platform in "${PLATFORM_LIST[@]}"; do
+  case "${platform}" in
+    linux/arm64*) qemu=arm64; binfmt=qemu-aarch64; native=aarch64 ;;
+    linux/amd64)  qemu=amd64; binfmt=qemu-x86_64;  native=x86_64 ;;
+  esac
+  if [ "${HOST_ARCH}" != "${native}" ] && [ ! -e "/proc/sys/fs/binfmt_misc/${binfmt}" ]; then
+    echo "Registering QEMU binfmt handlers for ${platform} builds..."
+    docker run --privileged --rm tonistiigi/binfmt --install "${qemu}"
+  fi
+done
 
 # --- Set up a buildx builder capable of multi-arch builds ------------------
 if ! docker buildx inspect "${BUILDX_BUILDER}" >/dev/null 2>&1; then
@@ -164,36 +185,47 @@ docker buildx use "${BUILDX_BUILDER}"
 docker buildx inspect --bootstrap >/dev/null
 
 # --- Build, load and export the images ------------------------------------
-mkdir -p "${RTI_IMAGE_DIR}"
-
 is_plugin() {
   local p
   for p in "${PLUGINS[@]}"; do [ "${p}" = "$1" ] && return 0; done
   return 1
 }
 
-for image in "${IMAGES[@]}"; do
-  # Base images are rti-<image>; plugins keep their own name
-  name="rti-${image}"
-  is_plugin "${image}" && name="${image}"
-  tag="${IMAGE_BASE}/${name}"
-  tar="${RTI_IMAGE_DIR}/${name}.tar.gz"
+IMAGE_DIRS=()
+for PLATFORM in "${PLATFORM_LIST[@]}"; do
+  # Archives are kept per architecture (linux/arm64/v8 -> arm64), so builds
+  # for different platforms never replace each other's archives.
+  ARCH="${PLATFORM#*/}"; ARCH="${ARCH%%/*}"
+  image_dir="${RTI_IMAGE_DIR:-${REPO_ROOT}/dist/rti-images-${ARCH}}"
+  mkdir -p "${image_dir}"
+  IMAGE_DIRS+=("${image_dir}")
 
-  echo "Building ${tag} for ${PLATFORM}..."
-  # shellcheck disable=SC2086  # BUILD_ARGS is a list of flags
-  docker buildx build --platform "${PLATFORM}" ${BUILD_ARGS[${image}]:-} \
-    -f "${DOCKERFILE[${image}]}" -t "${tag}" --load "${CONTEXT[${image}]}"
+  for image in "${IMAGES[@]}"; do
+    # Base images are rti-<image>; plugins keep their own name
+    name="rti-${image}"
+    is_plugin "${image}" && name="${image}"
+    tag="${IMAGE_BASE}/${name}"
+    tar="${image_dir}/${name}.tar.gz"
 
-  # Write to a temp file first, so an interrupted export never leaves a
-  # truncated archive behind for deploy-rti-demo.sh to ship.
-  echo "Exporting ${tag} to ${tar}..."
-  docker save "${tag}" | gzip > "${tar}.partial"
-  mv "${tar}.partial" "${tar}"
+    echo "Building ${tag} for ${PLATFORM}..."
+    # shellcheck disable=SC2086  # BUILD_ARGS is a list of flags
+    docker buildx build --platform "${PLATFORM}" ${BUILD_ARGS[${image}]:-} \
+      -f "${DOCKERFILE[${image}]}" -t "${tag}" --load "${CONTEXT[${image}]}"
+
+    # Write to a temp file first, so an interrupted export never leaves a
+    # truncated archive behind for deploy-rti-demo.sh to ship.
+    echo "Exporting ${tag} to ${tar}..."
+    docker save "${tag}" | gzip > "${tar}.partial"
+    mv "${tar}.partial" "${tar}"
+  done
 done
 
-echo "Images in ${RTI_IMAGE_DIR}:"
-ls -lh "${RTI_IMAGE_DIR}"
+for image_dir in "${IMAGE_DIRS[@]}"; do
+  echo "Images in ${image_dir}:"
+  ls -lh "${image_dir}"
+done
+echo "Loaded locally: the ${PLATFORM} images (the last platform built)."
 case "${PLATFORM}" in
   linux/arm64*) echo "Next: scripts/deploy-rti-demo.sh [machine ...]" ;;
-  *)            echo "Images loaded locally; for the VM fleet next run: setup/build-tarballs.sh" ;;
+  *)            echo "For the VM fleet next run: setup/build-tarballs.sh" ;;
 esac

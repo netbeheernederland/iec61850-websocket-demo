@@ -23,9 +23,14 @@ scripts with options, `--help` prints it (e.g. `scripts/push-rti-demo.sh --help`
 ### Pis: build and deploy
 
 ```bash
-scripts/build-rti-demo.sh                          # all images, linux/arm64/v8
+scripts/build-rti-demo.sh                          # all images, amd64 and arm64
 scripts/deploy-rti-demo.sh --start --role so 192.168.100.97
 ```
+
+`build-rti-demo.sh` builds both platforms, each into its own
+`dist/rti-images-<arch>/`; `--platform linux/arm64/v8` builds only the Pis'
+and takes half the time. Both builds are loaded under the same local names, so
+the last platform, arm64, is the one left loaded.
 
 `deploy-rti-demo.sh` uses `stage-rti-role.sh` to put each host's files
 together and, with `--start`, runs `load-and-start.sh` on the host.

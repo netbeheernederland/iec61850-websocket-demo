@@ -164,9 +164,11 @@ loads it into the host's Docker as
 `.../dr-leds:latest` and `.../dr-panel:latest`), the names
 `build-tarballs.sh` reads by default. Without image names it builds all of
 them, including `dr-panel`, which the VMs don't use. Without `--platform` it
-builds the arm64 Pi images instead, which do not run on the amd64 VMs. It also saves
-`.tar.gz` archives for `deploy-rti-demo.sh` under `dist/rti-images-amd64/`;
-the VM fleet does not use them.
+builds both amd64 and arm64, and arm64 last, so the arm64 Pi images are the
+ones left loaded, which do not run on the amd64 VMs: pass
+`--platform linux/amd64` before `build-tarballs.sh`. It also saves `.tar.gz`
+archives for `deploy-rti-demo.sh` under `dist/rti-images-amd64/`; the VM
+fleet does not use them.
 
 To export images from another repository or tag, select them explicitly:
 
@@ -273,7 +275,7 @@ For a Raspberry Pi, with Pi 5 as the example:
 ```bash
 ./download-images.sh --rpi 5
 ./build-base.sh --rpi 5                          # images/base-rti-rpi5.img
-../scripts/build-rti-demo.sh                     # arm64 base + plugin images
+../scripts/build-rti-demo.sh                     # base + plugin images, amd64 and arm64
 ./pi-user-data.sh --rpi 5 --hostname rti-fsp-pi5 \
   --role fsp --cp cp1 --model ../modules/fsp01/models/model_1.py
                                                  # -> images/rti-fsp-pi5.img
