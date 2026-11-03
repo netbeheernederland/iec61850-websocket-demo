@@ -99,7 +99,8 @@ services:
       cert-generator:
         condition: service_completed_successfully
     environment:
-      LOG_LEVEL: debug
+      # One LOG_LEVEL for the whole stack; debug unless set in the host env.
+      LOG_LEVEL: ${LOG_LEVEL:-debug}
       BFF_CONNECTIONS_FILE: "/config/connections.json"
       BFF_PLAYBOOKS_DIR: "/config/playbooks"
     volumes:
@@ -120,9 +121,19 @@ services:
     container_name: rti-hmi
     ports:
       - "80:80"
+    environment:
+      # BFF address as the user's browser reaches it, applied when the
+      # container starts. Empty: the build args, else localhost:3000.
+      BFF_HOST: ${HMI_BFF_HOST:-}
+      BFF_PORT: ${HMI_BFF_PORT:-}
+      # The browser console's level and nginx's error log.
+      LOG_LEVEL: ${LOG_LEVEL:-debug}
+      # No "/docker-entrypoint.sh: ..." lines at start;
+      # HMI_NGINX_ENTRYPOINT_QUIET_LOGS= (empty) shows them again.
+      NGINX_ENTRYPOINT_QUIET_LOGS: ${HMI_NGINX_ENTRYPOINT_QUIET_LOGS-1}
     depends_on:
       rti-bff:
-        condition: service_started
+        condition: service_healthy
       cert-generator:
         condition: service_completed_successfully
     volumes:
@@ -141,8 +152,12 @@ services:
       cert-generator:
         condition: service_completed_successfully
     environment:
-      LOG_LEVEL: debug
+      # One LOG_LEVEL for the whole stack; debug unless set in the host env.
+      LOG_LEVEL: ${LOG_LEVEL:-debug}
+      # The plugins it connects to: its own dr_leds, dr-leds-so.
+      PLUGINS_FILE: /plugins/plugins.json
     volumes:
+      - ./modules/so/plugins.json:/plugins/plugins.json:ro
       - certs:/certs:ro
     networks:
       - rti-network
@@ -165,8 +180,12 @@ services:
     environment:
       PORT: 5001
       CP: cp1
-      LOG_LEVEL: debug
+      # One LOG_LEVEL for the whole stack; debug unless set in the host env.
+      LOG_LEVEL: ${LOG_LEVEL:-debug}
       MODEL_PATH: "/models/model_1.py"
+      # The ACSI server starts with the FSP, not connected;
+      # FSP_AUTOCONNECT=true also dials out to the SO here.
+      FSP_SO_HOST: rti-so
       # The plugins it connects to: the dr-st7789v display, which needs
       # model_1.py's LD0/DWMX1.WMaxSpt and LD0/MMXU1.TotW. host_url in the
       # file is this FSP as the display reaches it: the published port 5001.
@@ -197,16 +216,40 @@ services:
     environment:
       PORT: 5005
       CP: cp2
-      LOG_LEVEL: debug
+      # One LOG_LEVEL for the whole stack; debug unless set in the host env.
+      LOG_LEVEL: ${LOG_LEVEL:-debug}
       MODEL_PATH: /models/model_2.py
+      # The ACSI server starts with the FSP, not connected;
+      # FSP_AUTOCONNECT=true also dials out to the SO here.
+      FSP_SO_HOST: rti-so
+      # The plugins it connects to: its own dr_leds, dr-leds-fsp02.
+      PLUGINS_FILE: /plugins/plugins.json
     volumes:
       - ./modules/fsp02/models:/models
+      - ./modules/fsp02/plugins.json:/plugins/plugins.json:ro
       - certs:/certs:ro
-    labels: # ✅ Add labels for consistency
+    labels:
       - "rti.service=rti-fsp02"
       - "rti.type=RTI-FSP"
       - "rti.host=rti-fsp02"
       - "rti.port=5005"
+
+  # dr_leds plugins: two simulated LEDs each, no hardware, as upstream's
+  # docker-compose.leds.yaml. rti-fsp02 and rti-so connect to their own
+  # (modules/*/plugins.json); rti-fsp01 uses the display plugin instead.
+  # Port 8099 and the health check are set by the Dockerfile; nothing is
+  # published: the HMI reaches the LEDs through /api/plugins/dr_leds/.
+  dr-leds-fsp02:
+    <<: &dr-leds
+      image: ${RTI_IMAGE_REPO:-netbeheernederland/iec61850-websocket}/dr-leds:${RTI_IMAGE_TAG:-latest}
+      networks:
+        - rti-network
+      restart: unless-stopped
+    container_name: dr-leds-fsp02
+
+  dr-leds-so:
+    <<: *dr-leds
+    container_name: dr-leds-so
 
 volumes:
   # Shared certificate store populated by cert-generator, mounted read-only
