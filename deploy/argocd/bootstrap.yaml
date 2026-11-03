@@ -9,7 +9,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: git@gitlab.apps.mypeters.eu:architecture/iec61850-websocket-demo.git
+    repoURL: git@github.com:netbeheernederland/iec61850-websocket-demo.git
     targetRevision: main
     path: deploy/argocd/apps
   destination:

@@ -8,7 +8,7 @@ metadata:
 spec:
   description: RTI demo SO and FSP installations
   sourceRepos:
-    - git@gitlab.apps.mypeters.eu:architecture/iec61850-websocket-demo.git
+    - git@github.com:netbeheernederland/iec61850-websocket-demo.git
   destinations:
     - server: "*"
       namespace: "rti-*"

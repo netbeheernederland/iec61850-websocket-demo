@@ -14,7 +14,7 @@ The examples assume:
 
 ```text
 Cluster:       k3s on the Pis (arm64 nodes), ArgoCD in namespace argocd
-Repository:    git@gitlab.apps.mypeters.eu:architecture/iec61850-websocket-demo.git, branch main
+Repository:    git@github.com:netbeheernederland/iec61850-websocket-demo.git, branch main
 Images:        ghcr.io/netbeheernederland/iec61850-websocket/{rti-so,rti-fsp,dr-panel}
                (see docker-images-github.md)
 Namespace:     rti-demo
@@ -137,14 +137,15 @@ kubectl -n rti-demo create secret generic rti-certs \
 
 ### 3a. ArgoCD can read this repository
 
-The repository is private on GitLab. Give ArgoCD a read-only deploy key
-(*GitLab → Settings → Repository → Deploy keys*) and register it:
+The repository is on GitHub. While it is private, give ArgoCD a read-only
+deploy key (*GitHub → repository → Settings → Deploy keys → Add deploy key*,
+leave *Allow write access* off) and register it. ArgoCD already trusts
+GitHub's SSH host keys, so no `argocd cert add-ssh` is needed:
 
 ```bash
 ssh-keygen -t ed25519 -N "" -f argocd-deploy-key -C argocd-rti-demo
-# add argocd-deploy-key.pub as a deploy key in GitLab, then:
-ssh-keyscan gitlab.apps.mypeters.eu | argocd cert add-ssh --batch
-argocd repo add git@gitlab.apps.mypeters.eu:architecture/iec61850-websocket-demo.git \
+# add argocd-deploy-key.pub as a deploy key on GitHub, then:
+argocd repo add git@github.com:netbeheernederland/iec61850-websocket-demo.git \
   --ssh-private-key-path argocd-deploy-key
 ```
 

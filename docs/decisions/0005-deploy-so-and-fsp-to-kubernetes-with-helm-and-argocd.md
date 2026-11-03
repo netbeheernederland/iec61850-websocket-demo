@@ -98,7 +98,7 @@ reach the registry.
   `setup/roles/fsp/models/`, `deploy/helm/rti-fsp/models/`), since Helm cannot
   read files outside the chart.
 * Bad, because the cluster needs registry access and secrets that are not in
-  Git: an ArgoCD deploy key for the GitLab repository and a `ghcr-pull`
+  Git: an ArgoCD deploy key for the repository and a `ghcr-pull`
   secret per namespace, created by hand as of 2026-10-16.
 * Bad, because with the image tag `latest` (the example values as of
   2026-10-16) ArgoCD sees no change when a new image is pushed; rollouts are

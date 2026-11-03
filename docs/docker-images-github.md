@@ -156,8 +156,8 @@ to the organisation and must be shared by hand.
 
 ## 5. Build and push with GitHub Actions
 
-Because this repository lives on GitLab, the workflow belongs in the
-**upstream** GitHub repo, `netbeheernederland/iec61850-websocket`, as for
+The images are built from the upstream sources, so the workflow belongs in
+the **upstream** repo, `netbeheernederland/iec61850-websocket`, as for
 example `.github/workflows/rti-demo-images.yml`. It builds the three images on
 every push to `initial-refactor` that touches the example or the shared core:
 
