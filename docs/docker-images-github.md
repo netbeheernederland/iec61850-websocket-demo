@@ -273,19 +273,18 @@ the arm64 images and write the archives `deploy-rti-demo.sh` expects, under the
 local names the compose files use. `scripts/pull-rti-demo.sh` does this:
 
 ```bash
-scripts/pull-rti-demo.sh                        # fsp and so, tag latest
+scripts/pull-rti-demo.sh                        # fsp, so and dr-leds, tag latest
 scripts/pull-rti-demo.sh --tag sha-1a2b3c4 fsp  # one image, pinned build
-scripts/build-rti-demo.sh plugins               # dr-panel and dr-leds
+scripts/build-rti-demo.sh dr-panel              # so runs it by default
 scripts/deploy-rti-demo.sh --start --role so 192.168.100.97
 ```
 
-It also checks that each pulled image is arm64. It doesn't pull the plugins
-`dr-panel` and `dr-leds`, which every role runs. They are published (by
-`push-rti-demo.sh`, since 2026-11-04), but the script doesn't fetch them yet;
-`dr-panel` replaces the published `rti-io` (the IO server from before it
-became the plugin `dr_panel`), which the role compose files no longer use.
-Build them with `scripts/build-rti-demo.sh plugins`, which writes them to the
-same directory, where deploying picks them up. For a Pi that is not flashed
+It also checks that each pulled image is arm64. Of the plugins it pulls
+`dr-leds`, which every role runs. It doesn't pull `dr-panel`, which so runs
+by default: build it with `scripts/build-rti-demo.sh dr-panel`, which writes
+it to the same directory, where deploying picks it up. (`dr-panel` replaces
+the published `rti-io`, the IO server from before it became the plugin
+`dr_panel`, which the role compose files no longer use.) For a Pi that is not flashed
 yet, `setup/pi-user-data.sh --role so|fsp` writes the same archives into a
 new Pi image instead, and the Pi starts them on first boot (see
 [setup/README.md](../setup/README.md#writing-an-image-to-an-sd-card-or-ssd)).

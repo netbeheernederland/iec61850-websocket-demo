@@ -1,19 +1,21 @@
 #!/usr/bin/env bash
-# Pull the arm64/v8 rti-demo base images (fsp, so) from the GitHub Container
-# Registry and save them as .tar.gz archives for deploy-rti-demo.sh, in place
-# of building them with build-rti-demo.sh. See docs/docker-images-github.md.
-# The plugins dr-panel and dr-leds are published too, but not pulled here:
-# build them with build-rti-demo.sh plugins. (The published rti-io is the IO server from
-# before it became the plugin dr_panel; the role compose files don't use it.)
+# Pull the arm64/v8 rti-demo images (fsp, so and the plugin dr-leds) from the
+# GitHub Container Registry and save them as .tar.gz archives for
+# deploy-rti-demo.sh, in place of building them with build-rti-demo.sh. See
+# docs/docker-images-github.md. The plugin dr-panel, which so runs by
+# default, isn't pulled: build it with build-rti-demo.sh dr-panel. (The
+# published rti-io is the IO server from before it became the plugin
+# dr_panel; the role compose files don't use it.)
 #
-# Usage: pull-rti-demo.sh [--tag TAG] [fsp] [so]   (no images: both)
+# Usage: pull-rti-demo.sh [--tag TAG] [fsp] [so] [dr-leds]   (no images: all three)
 #
 #   --tag TAG   registry tag to pull, e.g. sha-1a2b3c4 to pin a build
 #               (default: RTI_TAG, else latest)
 #
 # The images are re-tagged to the local names the compose files use
-# (netbeheernederland/iec61850-websocket/rti-<image>:latest) before saving,
-# so deploy-rti-demo.sh and load-and-start.sh work unchanged.
+# (netbeheernederland/iec61850-websocket/rti-<image>:latest, the plugin
+# .../dr-leds:latest) before saving, so deploy-rti-demo.sh and
+# load-and-start.sh work unchanged.
 #
 # Private packages need a docker login first:
 #   echo "${GHCR_TOKEN}" | docker login ghcr.io -u <github-user> --password-stdin
@@ -34,7 +36,15 @@ TAG="${RTI_TAG:-latest}"
 
 # Local name, as used by the compose files and build-rti-demo.sh
 IMAGE_BASE="netbeheernederland/iec61850-websocket"
-ALL_IMAGES=(fsp so)
+ALL_IMAGES=(fsp so dr-leds)
+
+# The image's name: rti-<image> for a base image, the plugin's own name
+image_name() {
+  case "$1" in
+    dr-*) echo "$1" ;;
+    *)    echo "rti-$1" ;;
+  esac
+}
 
 PLATFORM="linux/arm64/v8"
 
@@ -58,7 +68,7 @@ while [ $# -gt 0 ]; do
         usage
       fi
       TAG="$2"; shift ;;
-    fsp|so) IMAGES+=("$1") ;;
+    fsp|so|dr-leds) IMAGES+=("$1") ;;
     *) echo "Unknown argument: $1" >&2; usage ;;
   esac
   shift
@@ -77,9 +87,10 @@ fi
 mkdir -p "${RTI_IMAGE_DIR}"
 
 for image in "${IMAGES[@]}"; do
-  remote="${RTI_REGISTRY}/rti-${image}:${TAG}"
-  local_tag="${IMAGE_BASE}/rti-${image}:latest"
-  tar="${RTI_IMAGE_DIR}/rti-${image}.tar.gz"
+  name="$(image_name "${image}")"
+  remote="${RTI_REGISTRY}/${name}:${TAG}"
+  local_tag="${IMAGE_BASE}/${name}:latest"
+  tar="${RTI_IMAGE_DIR}/${name}.tar.gz"
 
   echo "Pulling ${remote} for ${PLATFORM}..."
   if ! docker pull --platform "${PLATFORM}" "${remote}"; then
@@ -107,4 +118,4 @@ done
 
 echo "Images in ${RTI_IMAGE_DIR}:"
 ls -lh "${RTI_IMAGE_DIR}"
-echo "Next: scripts/build-rti-demo.sh plugins (if not done), then scripts/deploy-rti-demo.sh [machine ...]"
+echo "Next: scripts/build-rti-demo.sh dr-panel (if not done; so runs it), then scripts/deploy-rti-demo.sh [machine ...]"

@@ -137,7 +137,7 @@ done
 [ -f "${REPO_ROOT}/modules/${ROLE}/docker-compose.yml" ] \
   || missing+=("${REPO_ROOT}/modules/${ROLE}/docker-compose.yml")
 if [ ${#missing[@]} -gt 0 ]; then
-  echo "Missing files (run scripts/build-rti-demo.sh first for the images; pull-rti-demo.sh has no plugins):" >&2
+  echo "Missing files (run scripts/build-rti-demo.sh first for the images; pull-rti-demo.sh has no dr-panel):" >&2
   printf '  %s\n' "${missing[@]}" >&2
   exit 1
 fi

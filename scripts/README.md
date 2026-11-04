@@ -9,7 +9,7 @@ scripts with options, `--help` prints it (e.g. `scripts/push-rti-demo.sh --help`
 | Script                       | What it does                                                          | Docs                                                        |
 |------------------------------|-----------------------------------------------------------------------|-------------------------------------------------------------|
 | `build-rti-demo.sh`          | Build the images from upstream, save them as `.tar.gz` archives        | [README](../README.md), [setup/README](../setup/README.md) |
-| `pull-rti-demo.sh`           | Pull `fsp`/`so` from GHCR and save them as archives, instead of building | [GHCR guide §7a](../docs/docker-images-github.md)         |
+| `pull-rti-demo.sh`           | Pull `fsp`/`so`/`dr-leds` from GHCR and save them as archives, instead of building | [GHCR guide §7a](../docs/docker-images-github.md)         |
 | `push-rti-demo.sh`           | Push the built archives to GHCR as multi-platform (amd64 + arm64) images | [GHCR guide §4](../docs/docker-images-github.md)            |
 | `retag-images.sh`            | Only tag the local images with their GHCR names; prints push commands  | [GHCR guide §4](../docs/docker-images-github.md)            |
 | `stage-rti-role.sh`          | Put one Pi's files for its role (`so`/`fsp`) in a directory            | [setup/README](../setup/README.md)                          |
@@ -40,8 +40,8 @@ instead, so the Pi starts its role on first boot.
 ### Pis: use the published images instead of building
 
 ```bash
-scripts/pull-rti-demo.sh                           # fsp and so from GHCR
-scripts/build-rti-demo.sh plugins                  # pull-rti-demo.sh doesn't fetch the plugins
+scripts/pull-rti-demo.sh                           # fsp, so and dr-leds from GHCR
+scripts/build-rti-demo.sh dr-panel                 # not pulled; so runs it by default
 scripts/deploy-rti-demo.sh --start --role fsp 192.168.100.98
 ```
 

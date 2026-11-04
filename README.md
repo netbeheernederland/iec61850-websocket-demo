@@ -101,12 +101,11 @@ images `rti-fsp`, `rti-so`, `rti-bff` and `rti-hmi` and every upstream plugin
 in `examples/rti-plugins/`: the IO plugin `dr-panel` and the sample plugin
 `dr-leds`. `--plugins` picks the plugins a Pi runs, comma-separated or
 `none`; by default so runs `dr-panel,dr-leds` and fsp `dr-leds`.
-`pull-rti-demo.sh` only pulls `rti-fsp` and `rti-so`; the plugins are
-published too, but it doesn't fetch them yet, so build them with
-`build-rti-demo.sh plugins`:
+`pull-rti-demo.sh` pulls `rti-fsp`, `rti-so` and `dr-leds`; build `dr-panel`,
+which so runs by default, with `build-rti-demo.sh dr-panel`:
 
 ```bash
-scripts/build-rti-demo.sh        # or: pull-rti-demo.sh && build-rti-demo.sh plugins
+scripts/build-rti-demo.sh        # or: pull-rti-demo.sh && build-rti-demo.sh dr-panel
 scripts/deploy-rti-demo.sh --start --role so 192.168.100.97 \
   --role fsp --cp cp1 --model modules/fsp01/models/model_1.py 192.168.100.98 \
   --plugins dr-panel,dr-leds --cp cp2 192.168.100.99
