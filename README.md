@@ -84,12 +84,12 @@ Stop it with the same command and `down` instead of `up -d`.
 **The HMI needs the BFF's host.** The browser talks to the BFF directly, at
 `localhost:3000` by default, which only works with the browser on the Docker
 host itself. From any other machine, set `HMI_BFF_HOST` to this machine's
-name. There is no project directory with an `.env` here, so write an env
-file on the local machine first, with its name, and pass it with
-`--env-file`:
+fully qualified name. There is no project directory with an `.env` here, so
+write an env file on the local machine first, with that name, and pass it
+with `--env-file`:
 
 ```bash
-echo "HMI_BFF_HOST=$(hostname)" > rti-demo.env
+echo "HMI_BFF_HOST=$(hostname -f)" > rti-demo.env
 echo "RTI_IMAGE_REPO=ghcr.io/netbeheernederland/iec61850-websocket" >> rti-demo.env
 
 docker compose -p rti-demo --env-file rti-demo.env \
@@ -97,8 +97,9 @@ docker compose -p rti-demo --env-file rti-demo.env \
   up -d
 ```
 
-Use the name (or IP address) the users' browsers can resolve, e.g.
-`$(hostname).local` with mDNS. `HMI_BFF_PORT` sets the port, default 3000.
+Check the file: `hostname -f` prints the short name only when the machine has
+no domain set up (`/etc/hosts` or DNS); then write the full name, or an IP
+address, by hand. Either way, use a name the users' browsers can resolve. `HMI_BFF_PORT` sets the port, default 3000.
 Check what the HMI got with `docker exec rti-hmi env | grep BFF_`; after
 changing the file, run `up -d` again and reload the page.
 
