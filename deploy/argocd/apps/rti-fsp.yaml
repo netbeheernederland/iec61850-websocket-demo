@@ -12,7 +12,7 @@ spec:
   goTemplateOptions: ["missingkey=error"]
   generators:
     - git:
-        repoURL: git@github.com:netbeheernederland/iec61850-websocket-demo.git
+        repoURL: https://github.com/netbeheernederland/iec61850-websocket-demo.git
         revision: main
         files:
           - path: deploy/installations/fsp/*/installation.yaml
@@ -27,7 +27,7 @@ spec:
     spec:
       project: rti-demo
       source:
-        repoURL: git@github.com:netbeheernederland/iec61850-websocket-demo.git
+        repoURL: https://github.com/netbeheernederland/iec61850-websocket-demo.git
         targetRevision: main
         path: deploy/helm/rti-fsp
         helm:

@@ -14,7 +14,7 @@ The examples assume:
 
 ```text
 Cluster:       k3s on the Pis (arm64 nodes), ArgoCD in namespace argocd
-Repository:    git@github.com:netbeheernederland/iec61850-websocket-demo.git, branch main
+Repository:    https://github.com/netbeheernederland/iec61850-websocket-demo.git, branch main
 Images:        ghcr.io/netbeheernederland/iec61850-websocket/{rti-so,rti-fsp,dr-panel}
                (see docker-images-github.md)
 Namespace:     rti-demo
@@ -137,18 +137,21 @@ kubectl -n rti-demo create secret generic rti-certs \
 
 ### 3a. ArgoCD can read this repository
 
-The repository is public on GitHub. ArgoCD still reads it over SSH, as the
-`repoURL`s say (`git@github.com:...`), and SSH needs a key even for a public
-repository: give ArgoCD a read-only deploy key (*GitHub → repository →
-Settings → Deploy keys → Add deploy key*, leave *Allow write access* off) and
-register it. ArgoCD already trusts GitHub's SSH host keys, so no
-`argocd cert add-ssh` is needed:
+The repository is public on GitHub, and the `repoURL`s use HTTPS
+(`https://github.com/...`), so ArgoCD reads it without credentials: there is
+nothing to register. To check that the repository is reachable without a
+login (from a machine with the cluster's network access):
 
 ```bash
-ssh-keygen -t ed25519 -N "" -f argocd-deploy-key -C argocd-rti-demo
-# add argocd-deploy-key.pub as a deploy key on GitHub, then:
-argocd repo add git@github.com:netbeheernederland/iec61850-websocket-demo.git \
-  --ssh-private-key-path argocd-deploy-key
+git ls-remote https://github.com/netbeheernederland/iec61850-websocket-demo.git main
+```
+
+If the repository becomes private, register it with a read-only token
+(a fine-grained token with *Contents: Read*) instead:
+
+```bash
+argocd repo add https://github.com/netbeheernederland/iec61850-websocket-demo.git \
+  --username <github-user> --password <token>
 ```
 
 The repository URL appears in `deploy/argocd/bootstrap.yaml`,
