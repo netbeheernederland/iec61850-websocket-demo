@@ -99,8 +99,8 @@ services:
       cert-generator:
         condition: service_completed_successfully
     environment:
-      # One LOG_LEVEL for the whole stack; debug unless set in the host env.
-      LOG_LEVEL: ${LOG_LEVEL:-debug}
+      # Log level per service: BFF_LOG_LEVEL in the host env, default info.
+      LOG_LEVEL: ${BFF_LOG_LEVEL:-info}
       BFF_CONNECTIONS_FILE: "/config/connections.json"
       BFF_PLAYBOOKS_DIR: "/config/playbooks"
     volumes:
@@ -126,8 +126,9 @@ services:
       # container starts. Empty: the build args, else localhost:3000.
       BFF_HOST: ${HMI_BFF_HOST:-}
       BFF_PORT: ${HMI_BFF_PORT:-}
-      # The browser console's level and nginx's error log.
-      LOG_LEVEL: ${LOG_LEVEL:-debug}
+      # The browser console's level and nginx's error log: HMI_LOG_LEVEL in
+      # the host env, default info.
+      LOG_LEVEL: ${HMI_LOG_LEVEL:-info}
       # No "/docker-entrypoint.sh: ..." lines at start;
       # HMI_NGINX_ENTRYPOINT_QUIET_LOGS= (empty) shows them again.
       NGINX_ENTRYPOINT_QUIET_LOGS: ${HMI_NGINX_ENTRYPOINT_QUIET_LOGS-1}
@@ -152,8 +153,8 @@ services:
       cert-generator:
         condition: service_completed_successfully
     environment:
-      # One LOG_LEVEL for the whole stack; debug unless set in the host env.
-      LOG_LEVEL: ${LOG_LEVEL:-debug}
+      # Log level per service: SO_LOG_LEVEL in the host env, default info.
+      LOG_LEVEL: ${SO_LOG_LEVEL:-info}
       # The plugins it connects to: its own dr_leds, dr-leds-so.
       PLUGINS_FILE: /plugins/plugins.json
     volumes:
@@ -180,8 +181,9 @@ services:
     environment:
       PORT: 5001
       CP: cp1
-      # One LOG_LEVEL for the whole stack; debug unless set in the host env.
-      LOG_LEVEL: ${LOG_LEVEL:-debug}
+      # Log level per service: FSP_LOG_LEVEL (both FSPs) in the host env,
+      # default info.
+      LOG_LEVEL: ${FSP_LOG_LEVEL:-info}
       MODEL_PATH: "/models/model_1.py"
       # The ACSI server starts with the FSP, not connected;
       # FSP_AUTOCONNECT=true also dials out to the SO here.
@@ -216,12 +218,14 @@ services:
     environment:
       PORT: 5005
       CP: cp2
-      # One LOG_LEVEL for the whole stack; debug unless set in the host env.
-      LOG_LEVEL: ${LOG_LEVEL:-debug}
+      # Log level per service: FSP_LOG_LEVEL (both FSPs) in the host env,
+      # default info.
+      LOG_LEVEL: ${FSP_LOG_LEVEL:-info}
       MODEL_PATH: /models/model_2.py
-      # The ACSI server starts with the FSP, not connected;
-      # FSP_AUTOCONNECT=true also dials out to the SO here.
+      # The ACSI server starts with the FSP; this one also dials out to the
+      # SO at start (rti-fsp01 waits until it is connected from the HMI).
       FSP_SO_HOST: rti-so
+      FSP_AUTOCONNECT: "true"
       # The plugins it connects to: its own dr_leds, dr-leds-fsp02.
       PLUGINS_FILE: /plugins/plugins.json
     volumes:

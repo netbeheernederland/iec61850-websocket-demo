@@ -2,8 +2,8 @@
 # Pull the arm64/v8 rti-demo base images (fsp, so) from the GitHub Container
 # Registry and save them as .tar.gz archives for deploy-rti-demo.sh, in place
 # of building them with build-rti-demo.sh. See docs/docker-images-github.md.
-# The plugins dr-panel and dr-leds aren't published: build them with
-# build-rti-demo.sh plugins. (The published rti-io is the IO server from
+# The plugins dr-panel and dr-leds are published too, but not pulled here:
+# build them with build-rti-demo.sh plugins. (The published rti-io is the IO server from
 # before it became the plugin dr_panel; the role compose files don't use it.)
 #
 # Usage: pull-rti-demo.sh [--tag TAG] [fsp] [so]   (no images: both)

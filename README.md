@@ -24,13 +24,17 @@ models and demo playbooks, for three deployment targets.
 | `rti-bff`        | `rti-bff`   | Backend-for-frontend; runs playbooks              | 3000          |
 | `rti-so`         | `rti-so`    | System operator (ACSI client)                     | —             |
 | `rti-fsp01`      | `rti-fsp`   | FSP on control point `cp1`, `model_1.py`          | 5001          |
-| `rti-fsp02`      | `rti-fsp`   | FSP on control point `cp2`, `model_2.py`          | 5005          |
+| `rti-fsp02`      | `rti-fsp`   | FSP on control point `cp2`, `model_2.py`; connects to the SO at start | 5005 |
+| `dr-leds-fsp02`, `dr-leds-so` | `dr-leds` | Plugin: two simulated LEDs for `rti-fsp02` and `rti-so` | — |
 | `keycloak`       | Keycloak 26 | OAuth server, realm `iec61850-test`               | 8080, 8443    |
 | `cert-generator` | Alpine      | One-off: mints the CA and TLS certificates        | —             |
 
-Images are named `${RTI_IMAGE_REPO}/rti-<role>:${RTI_IMAGE_TAG}`, by default
+Images are named `${RTI_IMAGE_REPO}/rti-<role>:${RTI_IMAGE_TAG}` (plugins
+`.../dr-leds`, `.../dr-panel`), by default
 `netbeheernederland/iec61850-websocket/rti-<role>:latest`. Published images
-live under `ghcr.io/netbeheernederland/iec61850-websocket`.
+live under `ghcr.io/netbeheernederland/iec61850-websocket`, for amd64 and
+arm64. `rti-fsp01` connects to the display plugin `display_st7789` on the
+network instead ([modules/fsp01/plugins.json](modules/fsp01/plugins.json)).
 
 ## Quick start (single host)
 
@@ -44,7 +48,15 @@ docker compose up -d
 ```
 
 `cert-generator` runs first and fills the shared `certs` volume; every
-other service mounts it read-only at `/certs`. Then:
+other service mounts it read-only at `/certs`.
+
+Each service's log level is set from the host environment, default `info`:
+`BFF_LOG_LEVEL`, `HMI_LOG_LEVEL`, `SO_LOG_LEVEL` and `FSP_LOG_LEVEL` (both
+FSPs), e.g. `FSP_LOG_LEVEL=debug docker compose up -d`. `HMI_BFF_HOST` and
+`HMI_BFF_PORT` set the BFF address as the browser reaches it (default
+`localhost:3000`).
+
+Then:
 
 - HMI: <http://localhost>
 - BFF: <http://localhost:3000>
@@ -89,8 +101,9 @@ images `rti-fsp`, `rti-so`, `rti-bff` and `rti-hmi` and every upstream plugin
 in `examples/rti-plugins/`: the IO plugin `dr-panel` and the sample plugin
 `dr-leds`. `--plugins` picks the plugins a Pi runs, comma-separated or
 `none`; by default so runs `dr-panel,dr-leds` and fsp `dr-leds`.
-`pull-rti-demo.sh` only has the published `rti-fsp` and `rti-so`; build the
-plugins with `build-rti-demo.sh plugins`:
+`pull-rti-demo.sh` only pulls `rti-fsp` and `rti-so`; the plugins are
+published too, but it doesn't fetch them yet, so build them with
+`build-rti-demo.sh plugins`:
 
 ```bash
 scripts/build-rti-demo.sh        # or: pull-rti-demo.sh && build-rti-demo.sh plugins

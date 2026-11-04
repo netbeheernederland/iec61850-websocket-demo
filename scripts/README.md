@@ -10,7 +10,7 @@ scripts with options, `--help` prints it (e.g. `scripts/push-rti-demo.sh --help`
 |------------------------------|-----------------------------------------------------------------------|-------------------------------------------------------------|
 | `build-rti-demo.sh`          | Build the images from upstream, save them as `.tar.gz` archives        | [README](../README.md), [setup/README](../setup/README.md) |
 | `pull-rti-demo.sh`           | Pull `fsp`/`so` from GHCR and save them as archives, instead of building | [GHCR guide §7a](../docs/docker-images-github.md)         |
-| `push-rti-demo.sh`           | Tag the local images with their GHCR names and push them               | [GHCR guide §4](../docs/docker-images-github.md)            |
+| `push-rti-demo.sh`           | Push the built archives to GHCR as multi-platform (amd64 + arm64) images | [GHCR guide §4](../docs/docker-images-github.md)            |
 | `retag-images.sh`            | Only tag the local images with their GHCR names; prints push commands  | [GHCR guide §4](../docs/docker-images-github.md)            |
 | `stage-rti-role.sh`          | Put one Pi's files for its role (`so`/`fsp`) in a directory            | [setup/README](../setup/README.md)                          |
 | `deploy-rti-demo.sh`         | Copy the archives and a role's files to running Pis, optionally start  | [README](../README.md), [setup/README](../setup/README.md) |
@@ -41,7 +41,7 @@ instead, so the Pi starts its role on first boot.
 
 ```bash
 scripts/pull-rti-demo.sh                           # fsp and so from GHCR
-scripts/build-rti-demo.sh plugins                  # dr-panel and dr-leds aren't published
+scripts/build-rti-demo.sh plugins                  # pull-rti-demo.sh doesn't fetch the plugins
 scripts/deploy-rti-demo.sh --start --role fsp 192.168.100.98
 ```
 
@@ -49,13 +49,16 @@ scripts/deploy-rti-demo.sh --start --role fsp 192.168.100.98
 
 ```bash
 echo "${GHCR_TOKEN}" | docker login ghcr.io -u <github-user> --password-stdin
-scripts/build-rti-demo.sh fsp so
+scripts/build-rti-demo.sh fsp so                       # amd64 and arm64
 scripts/push-rti-demo.sh --dry-run --tag sha-1a2b3c4   # check first
 scripts/push-rti-demo.sh --tag sha-1a2b3c4 fsp so
 ```
 
-`push-rti-demo.sh` only pushes arm64 images unless given `--arch`, so an
-amd64 build for the VM fleet can't replace the Pis' `latest`.
+`push-rti-demo.sh` pushes from the archives in `dist/rti-images-<arch>/`,
+not the one locally loaded image: each platform as `<tag>-<arch>`, then
+`latest` and `--tag` as one multi-platform image, so `docker pull` picks the
+machine's own platform. It checks the architecture inside every archive
+first, and puts the local images back as they were afterwards.
 
 ### Check and record the demo
 

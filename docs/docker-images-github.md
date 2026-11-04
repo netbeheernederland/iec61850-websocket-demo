@@ -144,15 +144,24 @@ to the organisation and must be shared by hand.
 > `latest`. The package is then not linked to the repo; link it once in the
 > package settings (*Connect repository*).
 >
-> `scripts/push-rti-demo.sh` does the tagging and the pushing in one go. It
-> checks that every image is arm64 (or `--arch`) and that you are logged in
-> to `ghcr.io` before it pushes anything:
+> `scripts/push-rti-demo.sh` pushes multi-platform images in one go, from
+> the amd64 and arm64 archives `build-rti-demo.sh` writes. Each platform is
+> pushed as `<tag>-amd64` and `<tag>-arm64`, then combined into one
+> multi-platform `latest` (and `--tag`), so `docker pull` picks the machine's
+> own platform. It checks the architecture inside every archive and that you
+> are logged in to `ghcr.io` before it pushes anything:
 >
 > ```bash
 > scripts/push-rti-demo.sh --dry-run --tag "sha-${SHA}"   # show what would be pushed
-> scripts/push-rti-demo.sh --tag "sha-${SHA}" fsp so      # tag and push two images
+> scripts/push-rti-demo.sh --tag "sha-${SHA}" fsp so      # push two images
 > scripts/push-rti-demo.sh --no-latest --tag test hmi     # leave latest alone
+> scripts/push-rti-demo.sh --platform arm64 hmi           # one platform only
 > ```
+>
+> Keep the `-<arch>` tags: the multi-platform tags point at them. The
+> combined image is a Docker manifest list, which can't carry the
+> `org.opencontainers.image.source` annotation, so link each package to the
+> repo once by hand (*Connect repository*).
 
 ## 5. Build and push with GitHub Actions
 
@@ -271,8 +280,9 @@ scripts/deploy-rti-demo.sh --start --role so 192.168.100.97
 ```
 
 It also checks that each pulled image is arm64. It doesn't pull the plugins
-`dr-panel` and `dr-leds`, which every role runs: `dr-leds` isn't published,
-and `dr-panel` replaces the published `rti-io` (the IO server from before it
+`dr-panel` and `dr-leds`, which every role runs. They are published (by
+`push-rti-demo.sh`, since 2026-11-04), but the script doesn't fetch them yet;
+`dr-panel` replaces the published `rti-io` (the IO server from before it
 became the plugin `dr_panel`), which the role compose files no longer use.
 Build them with `scripts/build-rti-demo.sh plugins`, which writes them to the
 same directory, where deploying picks them up. For a Pi that is not flashed
@@ -313,15 +323,14 @@ echo "<read-only token>" | docker login ghcr.io -u <github-user> --password-stdi
 ```
 
 Then, in `~/rti` (where `deploy-rti-demo.sh` or the first boot puts the compose
-file), for the role's base image (`so`: `rti-so`; `fsp`: `rti-fsp`). The
-plugins `dr-panel` and `dr-leds` aren't published, so they must already be
-loaded, from the archives a deploy or the first boot brought:
+file), for the role's base image (`so`: `rti-so`; `fsp`: `rti-fsp`) and
+the plugins it runs (by default `so`: `dr-panel dr-leds`; `fsp`: `dr-leds`):
 
 ```bash
 REGISTRY="ghcr.io/netbeheernederland/iec61850-websocket"
 LOCAL="netbeheernederland/iec61850-websocket"
 
-for image in rti-so; do
+for image in rti-so dr-panel dr-leds; do
   docker pull "${REGISTRY}/${image}:latest"
   docker tag "${REGISTRY}/${image}:latest" "${LOCAL}/${image}:latest"
 done
