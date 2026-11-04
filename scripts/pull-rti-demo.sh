@@ -17,8 +17,7 @@
 # .../dr-leds:latest) before saving, so deploy-rti-demo.sh and
 # load-and-start.sh work unchanged.
 #
-# Private packages need a docker login first:
-#   echo "${GHCR_TOKEN}" | docker login ghcr.io -u <github-user> --password-stdin
+# The images are public: no docker login is needed.
 #
 # Environment:
 #   RTI_REGISTRY   registry and namespace to pull from
@@ -95,7 +94,7 @@ for image in "${IMAGES[@]}"; do
   echo "Pulling ${remote} for ${PLATFORM}..."
   if ! docker pull --platform "${PLATFORM}" "${remote}"; then
     echo "Could not pull ${remote}." >&2
-    echo "For a private package, log in first: docker login ghcr.io (token with read:packages)" >&2
+    echo "Check the tag exists and the package is public (Package settings on GitHub)." >&2
     exit 1
   fi
 

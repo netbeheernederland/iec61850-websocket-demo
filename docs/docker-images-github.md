@@ -57,7 +57,7 @@ fine-grained tokens cannot be used for the container registry.
 | Who                      | Scopes                               | Used for                        |
 |--------------------------|--------------------------------------|---------------------------------|
 | Developer pushing images | `write:packages` (+ `read:packages`) | `docker push` from a laptop     |
-| Pi or build host pulling | `read:packages` only                 | `docker pull` of private images |
+| Pulling a private image  | `read:packages` only                 | Not needed: the images are public |
 | Cleaning up old versions | `delete:packages`                    | Deleting package versions       |
 
 Create one under *GitHub → Settings → Developer settings → Personal access
@@ -88,7 +88,8 @@ gh auth token | docker login ghcr.io -u "$(gh api user -q .login)" --password-st
 `~/.docker/config.json` of the user running it. On a Pi that is the `rti`
 user, so give the Pi a **read-only** token and never your push token.
 
-Public packages can be pulled without logging in.
+The rti-demo images are public, so pulling needs no login; only pushing
+does.
 
 ## 4. Build and push from a developer machine
 
@@ -254,15 +255,14 @@ Notes:
 
 ## 6. Package visibility
 
-New packages are **private**. Set visibility per package under
-*Organisation → Packages → `<package>` → Package settings → Danger zone →
-Change visibility*.
+The rti-demo images are **public**: anyone can pull them without logging
+in. They contain no keys or certificates; those are mounted or generated at
+start.
 
-* **Private** (default): every machine that pulls needs a `read:packages`
-  token (section 3).
-* **Public**: anyone can pull without logging in. Only do this if the images
-  contain nothing confidential (no keys, certificates, internal hostnames).
-  The organisation may have disabled public packages.
+A package pushed for the first time is **private**, so make each new one
+public once under *Organisation → Packages → `<package>` → Package settings
+→ Danger zone → Change visibility*. A private package needs a
+`read:packages` token on every machine that pulls it (section 3).
 
 ## 7. Getting GHCR images onto the Pis
 
@@ -315,13 +315,7 @@ platform, add `--platform linux/arm64/v8` to `docker save` as well.
 
 ### 7b. Pis with internet access: pull on the Pi
 
-On each Pi, as the `rti` user, once:
-
-```bash
-echo "<read-only token>" | docker login ghcr.io -u <github-user> --password-stdin
-```
-
-Then, in `~/rti` (where `deploy-rti-demo.sh` or the first boot puts the compose
+No login is needed: the images are public. In `~/rti` (where `deploy-rti-demo.sh` or the first boot puts the compose
 file), for the role's base image (`so`: `rti-so`; `fsp`: `rti-fsp`) and
 the plugins it runs (by default `so`: `dr-panel dr-leds`; `fsp`: `dr-leds`):
 
@@ -398,7 +392,7 @@ not delete layers a kept tag still needs.
 
 | Symptom                                                        | Cause and fix                                                                                                            |
 |----------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------|
-| `denied: denied` / `unauthorized` on pull                      | Not logged in, token lacks `read:packages`, or token not SSO-authorised for the organisation.                            |
+| `denied: denied` / `unauthorized` on pull                      | The package is still private (section 6), or a stale login: `docker logout ghcr.io` and pull again.                      |
 | `403 Forbidden` on push from Actions                           | Workflow lacks `permissions: packages: write`, or the repo has no write access to an existing package (section 5).       |
 | `invalid reference format: repository name must be lowercase`  | Owner written as `NetbeheerNederland`; GHCR names must be lower case.                                                    |
 | `pull access denied for netbeheernederland/…` on `compose up` | The GHCR image was pulled but not re-tagged to the local name the compose file uses (section 7).                         |

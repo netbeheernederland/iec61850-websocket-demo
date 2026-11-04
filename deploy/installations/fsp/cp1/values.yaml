@@ -3,9 +3,6 @@
 image:
   tag: latest            # pin sha-<commit> to control rollouts
 
-imagePullSecrets:
-  - name: ghcr-pull
-
 cp: cp1
 port: 5001
 

@@ -33,8 +33,9 @@ Images are named `${RTI_IMAGE_REPO}/rti-<role>:${RTI_IMAGE_TAG}` (plugins
 `.../dr-leds`, `.../dr-panel`), by default
 `netbeheernederland/iec61850-websocket/rti-<role>:latest`. Published images
 live under `ghcr.io/netbeheernederland/iec61850-websocket`, for amd64 and
-arm64. `rti-fsp01` connects to the display plugin `display_st7789` on the
-network instead ([modules/fsp01/plugins.json](modules/fsp01/plugins.json)).
+arm64; they are public, so pulling needs no login. `rti-fsp01` connects to
+the display plugin `display_st7789` on the network instead
+([modules/fsp01/plugins.json](modules/fsp01/plugins.json)).
 
 ## Quick start (single host)
 
@@ -65,6 +66,36 @@ Then:
 The BFF reads its connections from
 [modules/bff/config/connections.json](modules/bff/config/connections.json).
 Check under HMI → Connections that the SO and both FSPs are registered.
+
+### Without a clone: straight from GitHub
+
+Compose can read this repository's `docker-compose.yml` from GitHub, so one
+command starts the demo on any machine with Docker, without cloning:
+
+```bash
+RTI_IMAGE_REPO=ghcr.io/netbeheernederland/iec61850-websocket \
+  docker compose -p rti-demo \
+  -f https://github.com/netbeheernederland/iec61850-websocket-demo.git \
+  up -d
+```
+
+Stop it with the same command and `down` instead of `up -d`.
+
+- Compose clones the repository into `~/.cache/docker-compose/<commit>/`,
+  and the files the services mount (certificates config, Keycloak realm,
+  models, plugin files, playbooks) come from that copy.
+- `RTI_IMAGE_REPO` is needed: without it Docker looks for the images on
+  Docker Hub. The published images hold amd64 and arm64, so each machine
+  pulls its own.
+- `-p rti-demo` keeps the project name the same for every commit, so `down`
+  finds the running stack.
+- Append `#<branch, tag or commit>` to the URL to pin a version, e.g.
+  `...demo.git#483fc3e`; without it Compose takes `main`.
+- The images are public: no `docker login` is needed.
+- Connections and playbooks saved from the HMI land in the cached copy's
+  `modules/bff/config/`; a newer commit starts from a fresh copy without them.
+- `rti-fsp01` connects to the display plugin on its own network; elsewhere it
+  lists that plugin as failed and retries, and the rest of the demo works.
 
 ## Running the demo
 

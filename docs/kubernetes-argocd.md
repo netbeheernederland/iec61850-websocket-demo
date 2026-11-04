@@ -137,10 +137,12 @@ kubectl -n rti-demo create secret generic rti-certs \
 
 ### 3a. ArgoCD can read this repository
 
-The repository is on GitHub. While it is private, give ArgoCD a read-only
-deploy key (*GitHub → repository → Settings → Deploy keys → Add deploy key*,
-leave *Allow write access* off) and register it. ArgoCD already trusts
-GitHub's SSH host keys, so no `argocd cert add-ssh` is needed:
+The repository is public on GitHub. ArgoCD still reads it over SSH, as the
+`repoURL`s say (`git@github.com:...`), and SSH needs a key even for a public
+repository: give ArgoCD a read-only deploy key (*GitHub → repository →
+Settings → Deploy keys → Add deploy key*, leave *Allow write access* off) and
+register it. ArgoCD already trusts GitHub's SSH host keys, so no
+`argocd cert add-ssh` is needed:
 
 ```bash
 ssh-keygen -t ed25519 -N "" -f argocd-deploy-key -C argocd-rti-demo
@@ -155,9 +157,12 @@ if it moves.
 
 ### 3b. The cluster can pull the images
 
-GHCR packages are private by default. The example `values.yaml` files name the
-pull secret `ghcr-pull`; create it in each installation namespace with a
-`read:packages` token:
+The images are public on GHCR, so the cluster pulls them without a pull
+secret; the installations set no `imagePullSecrets`.
+
+If you use a private registry instead (`image.repository`), create a
+docker-registry secret in each installation namespace and name it in the
+installation's values:
 
 ```bash
 kubectl create namespace rti-demo
@@ -167,13 +172,13 @@ kubectl -n rti-demo create secret docker-registry ghcr-pull \
   --docker-password=<read:packages token>
 ```
 
-Secrets are not kept in Git, so this step is by hand (or with a secrets tool
-such as Sealed Secrets or External Secrets). If the namespace is created by
-ArgoCD first, the pods wait in `ImagePullBackOff` until the secret exists,
-then start. For public packages, remove `imagePullSecrets` from the values.
+```yaml
+imagePullSecrets:
+  - name: ghcr-pull
+```
 
-The images are arm64 only; the charts schedule onto `kubernetes.io/arch:
-arm64` nodes.
+The images hold amd64 and arm64; the charts schedule onto
+`kubernetes.io/arch: arm64` nodes (the Pis) by default.
 
 ## 4. Bootstrap
 
@@ -208,8 +213,6 @@ its polling interval, three minutes by default, or at once with
 mkdir deploy/installations/fsp/cp3
 cp deploy/installations/fsp/cp2/installation.yaml deploy/installations/fsp/cp3/
 cat > deploy/installations/fsp/cp3/values.yaml <<'EOF'
-imagePullSecrets:
-  - name: ghcr-pull
 cp: cp3
 port: 5006
 model:
@@ -285,7 +288,7 @@ reverts changes made outside Git.
 |------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------|
 | No Applications appear for the installations               | ArgoCD cannot read the repository (section 3a); see `kubectl -n argocd describe applicationset rti-fsp`.             |
 | Application error `namespace ... is not permitted in project` | The namespace does not start with `rti-`; rename it or extend `destinations` in `project.yaml`.                     |
-| Pod `ImagePullBackOff`                                     | No `ghcr-pull` secret in the namespace, or the token lacks `read:packages` (section 3b).                               |
+| Pod `ImagePullBackOff`                                     | Wrong `image.tag`, or a private registry without a pull secret in the namespace (section 3b).                          |
 | Pod `Pending`, `didn't match Pod's node affinity/selector` | No arm64 node, or the `kubernetes.io/hostname` in `nodeSelector` does not match a node name (`kubectl get nodes`).   |
 | `model.file "…" is not in the chart's models/ directory`   | The file is not bundled: add it to `deploy/helm/rti-fsp/models/` or give `model.content`.                             |
 | Pod rejected: `violates PodSecurity "baseline"`            | dr-panel sidecar is privileged; label the namespace `pod-security.kubernetes.io/enforce=privileged`.                       |

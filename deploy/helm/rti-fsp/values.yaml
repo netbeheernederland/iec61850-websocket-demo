@@ -11,8 +11,8 @@ image:
   tag: latest
   pullPolicy: IfNotPresent
 
-# GHCR packages are private by default: name a docker-registry secret with a
-# read:packages token, created in the release's namespace beforehand.
+# The images are public on GHCR: no pull secret needed. For a private
+# registry, name a docker-registry secret created in the release's namespace.
 imagePullSecrets: []
 #  - name: ghcr-pull
 

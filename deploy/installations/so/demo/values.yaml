@@ -3,9 +3,6 @@
 image:
   tag: latest            # pin sha-<commit> to control rollouts
 
-imagePullSecrets:
-  - name: ghcr-pull
-
 port: 5000
 
 # k3s ServiceLB: ports 5000 and 8765 on the nodes' IPs, like the compose
