@@ -1,10 +1,5 @@
 {
   "host_url": "http://pavlopetri.yggdrasill.tld:5001",
   "plugins": [
-    {
-      "name": "display_st7789",
-      "url": "http://rti-fsp01.yggdrasill.tld:8000/plugin",
-      "settings": {}
-    }
   ]
 }
