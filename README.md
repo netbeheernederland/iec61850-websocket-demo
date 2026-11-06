@@ -33,20 +33,39 @@ Images are named `${RTI_IMAGE_REPO}/rti-<role>:${RTI_IMAGE_TAG}` (plugins
 `.../dr-leds`, `.../dr-panel`), by default
 `netbeheernederland/iec61850-websocket/rti-<role>:latest`. Published images
 live under `ghcr.io/netbeheernederland/iec61850-websocket`, for amd64 and
-arm64; they are public, so pulling needs no login. `rti-fsp01` connects to
-the display plugin `display_st7789` on the network instead
-([modules/fsp01/plugins.json](modules/fsp01/plugins.json)).
+arm64; they are public, so pulling needs no login. Upstream CI pushes them
+on every push to `main` that changes an image (`latest`, and
+`sha-<full commit>` to pin); `scripts/push-rti-demo.sh` pushes them by hand.
+`rti-fsp01` connects to the display plugin `display_st7789` on
+the network instead ([modules/fsp01/plugins.json](modules/fsp01/plugins.json)).
 
 ## Quick start (single host)
 
-Requires Docker with Compose v2 and the images available locally (see
-[docs/docker-images-github.md](docs/docker-images-github.md)), or point
-Compose at the registry:
+Requires Docker with Compose v2, and the images: either pull them from the
+registry, or build them locally.
+
+From the registry:
 
 ```bash
-export RTI_IMAGE_REPO=ghcr.io/netbeheernederland/iec61850-websocket   # optional
+export RTI_IMAGE_REPO=ghcr.io/netbeheernederland/iec61850-websocket
 docker compose up -d
 ```
+
+Built locally, from the upstream `main` branch, for the host's own platform:
+
+```bash
+scripts/build-rti-demo.sh --platform linux/amd64     # on an arm64 host: linux/arm64/v8
+docker compose up -d                                 # without RTI_IMAGE_REPO
+```
+
+`build-rti-demo.sh` builds `rti-fsp`, `rti-so`, `rti-bff`, `rti-hmi`,
+`dr-leds` and `dr-panel` and loads them under the local names above, which
+Compose uses when `RTI_IMAGE_REPO` is not set. Always pass `--platform`
+here: without it the script builds both platforms, arm64 last, so the arm64
+images are the ones left loaded, and an amd64 host runs those only under
+emulation, if at all. Set `VITE_BFF_HOST` and `VITE_BFF_PORT` to build a BFF
+address into the HMI. See [scripts/README.md](scripts/README.md) and
+[docs/docker-images-github.md](docs/docker-images-github.md).
 
 `cert-generator` runs first and fills the shared `certs` volume; every
 other service mounts it read-only at `/certs`.
@@ -154,11 +173,11 @@ images `rti-fsp`, `rti-so`, `rti-bff` and `rti-hmi` and every upstream plugin
 in `examples/rti-plugins/`: the IO plugin `dr-panel` and the sample plugin
 `dr-leds`. `--plugins` picks the plugins a Pi runs, comma-separated or
 `none`; by default so runs `dr-panel,dr-leds` and fsp `dr-leds`.
-`pull-rti-demo.sh` pulls `rti-fsp`, `rti-so` and `dr-leds`; build `dr-panel`,
-which so runs by default, with `build-rti-demo.sh dr-panel`:
+`pull-rti-demo.sh` pulls the arm64 `rti-fsp`, `rti-so`, `dr-panel` and
+`dr-leds` instead, which is all the Pis run:
 
 ```bash
-scripts/build-rti-demo.sh        # or: pull-rti-demo.sh && build-rti-demo.sh dr-panel
+scripts/build-rti-demo.sh        # or: scripts/pull-rti-demo.sh
 scripts/deploy-rti-demo.sh --start --role so 192.168.100.97 \
   --role fsp --cp cp1 --model modules/fsp01/models/model_1.py 192.168.100.98 \
   --plugins dr-panel,dr-leds --cp cp2 192.168.100.99

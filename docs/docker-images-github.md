@@ -1,8 +1,9 @@
 # Docker Images on GitHub (GHCR) — Getting Started
 
-This guide covers publishing the rti-demo images (`rti-fsp`, `rti-so` and
-the IO plugin `dr-panel`, formerly `rti-io`) to the **GitHub Container
-Registry** (GHCR, `ghcr.io`) and getting them from there onto the Pis.
+This guide covers publishing the rti-demo images (`rti-fsp`, `rti-so`,
+`rti-bff`, `rti-hmi`, the IO plugin `dr-panel`, formerly `rti-io`, and the
+sample plugin `dr-leds`) to the **GitHub Container Registry** (GHCR,
+`ghcr.io`) and getting them from there onto the Pis.
 
 It does not replace the tarball flow. [ADR 0003](decisions/0003-ship-vm-fleet-images-as-docker-save-tarballs.md)
 still holds: machines must be able to start without access to a registry, so
@@ -15,7 +16,7 @@ The examples assume:
 
 ```text
 Upstream repo:  https://github.com/netbeheernederland/iec61850-websocket
-Branch:         initial-refactor
+Branch:         main
 Example dir:    examples/rti-demo
 Registry:       ghcr.io/netbeheernederland/iec61850-websocket
 Local name:     netbeheernederland/iec61850-websocket/rti-<image>:latest
@@ -34,6 +35,9 @@ one-to-one onto the names the compose files already use:
 | `netbeheernederland/iec61850-websocket/rti-fsp`     | `ghcr.io/netbeheernederland/iec61850-websocket/rti-fsp`     |
 | `netbeheernederland/iec61850-websocket/rti-so`      | `ghcr.io/netbeheernederland/iec61850-websocket/rti-so`      |
 | `netbeheernederland/iec61850-websocket/dr-panel`    | `ghcr.io/netbeheernederland/iec61850-websocket/dr-panel`    |
+| `netbeheernederland/iec61850-websocket/rti-bff`     | `ghcr.io/netbeheernederland/iec61850-websocket/rti-bff`     |
+| `netbeheernederland/iec61850-websocket/rti-hmi`     | `ghcr.io/netbeheernederland/iec61850-websocket/rti-hmi`     |
+| `netbeheernederland/iec61850-websocket/dr-leds`     | `ghcr.io/netbeheernederland/iec61850-websocket/dr-leds`     |
 
 `modules/fsp/docker-compose.yml` and `modules/so/docker-compose.yml` refer to
 the **local** name. Without a registry host, Docker reads that as a Docker Hub
@@ -45,9 +49,9 @@ Tags used:
 
 | Tag              | Meaning                                         |
 |------------------|-------------------------------------------------|
-| `latest`         | Last build of the `initial-refactor` branch     |
-| `sha-<7 chars>`  | Build of that upstream commit; use it to pin    |
-| `<branch>`       | Last build of another branch, if CI builds it   |
+| `latest`         | Last build of the `main` branch                 |
+| `sha-<commit>`   | Build of that upstream commit; use it to pin (CI: full commit, by hand: as given) |
+| `main`           | Last CI build of `main` (the same as `latest`)  |
 
 ## 2. Access tokens
 
@@ -72,7 +76,7 @@ gh auth refresh -h github.com -s write:packages
 ```
 
 Inside GitHub Actions no personal token is needed: the workflow's
-`GITHUB_TOKEN` can push (section 5).
+`GITHUB_TOKEN` pushes (section 5).
 
 ## 3. Log in
 
@@ -164,94 +168,33 @@ to the organisation and must be shared by hand.
 > `org.opencontainers.image.source` annotation, so link each package to the
 > repo once by hand (*Connect repository*).
 
-## 5. Build and push with GitHub Actions
+## 5. Build and push with GitHub Actions (upstream)
 
-The images are built from the upstream sources, so the workflow belongs in
-the **upstream** repo, `netbeheernederland/iec61850-websocket`, as for
-example `.github/workflows/rti-demo-images.yml`. It builds the three images on
-every push to `initial-refactor` that touches the example or the shared core:
+The upstream repository, `netbeheernederland/iec61850-websocket`, builds and
+pushes the images with `.github/workflows/images.yml` (upstream decision
+0047). Pushing by hand (section 4) still works, but the next CI build of the
+same image replaces its `latest`.
 
-```yaml
-name: rti-demo images
-
-on:
-  push:
-    branches: [initial-refactor]
-    paths:
-      - "examples/rti-demo/**"
-      - "examples/rti-plugins/dr_panel/**"
-      - "src/**"
-      - "uv.lock"
-      - ".github/workflows/rti-demo-images.yml"
-  workflow_dispatch:
-
-permissions:
-  contents: read
-  packages: write
-
-jobs:
-  build:
-    # Native arm64 runner: no QEMU, much faster than emulated builds
-    runs-on: ubuntu-24.04-arm
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - image: rti-fsp
-            dockerfile: examples/rti-demo/modules/fsp/docker/Dockerfile
-            context: .
-          - image: rti-so
-            dockerfile: examples/rti-demo/modules/so/docker/Dockerfile
-            context: .
-          - image: dr-panel
-            dockerfile: examples/rti-plugins/dr_panel/docker/Dockerfile
-            context: examples/rti-plugins/dr_panel
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: docker/setup-buildx-action@v3
-
-      - uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/netbeheernederland/iec61850-websocket/${{ matrix.image }}
-          tags: |
-            type=raw,value=latest,enable=${{ github.ref_name == 'initial-refactor' }}
-            type=sha,prefix=sha-
-            type=ref,event=branch
-
-      - uses: docker/build-push-action@v6
-        with:
-          context: ${{ matrix.context }}
-          file: ${{ matrix.dockerfile }}
-          platforms: linux/arm64/v8
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          annotations: ${{ steps.meta.outputs.annotations }}
-          cache-from: type=gha,scope=${{ matrix.image }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
-```
+| | |
+|---|---|
+| Runs on | a push to `main`, a `v*` tag, a pull request, or by hand (*Run workflow*) |
+| Pushes | on `main`, a tag and a manual run; a pull request only builds |
+| Builds | only the images whose files changed; all six on a tag or by hand |
+| Images | `rti-fsp`, `rti-so`, `rti-bff`, `rti-hmi`, `dr-panel`, `dr-leds`, each for `linux/amd64` and `linux/arm64` |
+| Tags | `main` and `latest` on `main`, `<version>` on a tag, `sha-<full commit>` on every push |
+| Labels | the OCI labels (title, description, vendor, source, revision) on every image |
 
 Notes:
 
-* `docker/metadata-action` sets the `org.opencontainers.image.source` label
-  and annotation, so the packages are linked to the repo automatically.
-* `permissions: packages: write` lets `GITHUB_TOKEN` push. If a package was
-  first pushed by hand (section 4), give the repo write access to it once:
-  *package → Package settings → Manage Actions access → Add repository →
-  Role: Write*. Otherwise the push fails with `403 Forbidden`.
-* `ubuntu-24.04-arm` is a hosted arm64 runner. If it is not available for the
-  repository, use `runs-on: ubuntu-latest` and add
-  `- uses: docker/setup-qemu-action@v3` before the buildx step; the build then
-  runs emulated, like `build-rti-demo.sh`.
-* `workflow_dispatch` adds a *Run workflow* button to rebuild by hand.
+* CI tags a commit as `sha-<full commit>`, not `sha-<7 chars>` as the
+  `push-rti-demo.sh --tag` examples do; pin with the tag the registry shows
+  (section 8).
+* An image whose files didn't change keeps its previous `latest`, which may
+  still be one pushed by hand; *Run workflow* rebuilds and pushes all six.
+* A package first pushed by hand needs the upstream repository to have write
+  access to it, once: *package → Package settings → Manage Actions access →
+  Add repository → Role: Write*. Otherwise the push fails with
+  `403 Forbidden`.
 
 ## 6. Package visibility
 
@@ -273,18 +216,16 @@ the arm64 images and write the archives `deploy-rti-demo.sh` expects, under the
 local names the compose files use. `scripts/pull-rti-demo.sh` does this:
 
 ```bash
-scripts/pull-rti-demo.sh                        # fsp, so and dr-leds, tag latest
+scripts/pull-rti-demo.sh                        # fsp, so, dr-panel and dr-leds, tag latest
 scripts/pull-rti-demo.sh --tag sha-1a2b3c4 fsp  # one image, pinned build
-scripts/build-rti-demo.sh dr-panel              # so runs it by default
 scripts/deploy-rti-demo.sh --start --role so 192.168.100.97
 ```
 
 It also checks that each pulled image is arm64. Of the plugins it pulls
-`dr-leds`, which every role runs. It doesn't pull `dr-panel`, which so runs
-by default: build it with `scripts/build-rti-demo.sh dr-panel`, which writes
-it to the same directory, where deploying picks it up. (`dr-panel` replaces
-the published `rti-io`, the IO server from before it became the plugin
-`dr_panel`, which the role compose files no longer use.) For a Pi that is not flashed
+`dr-leds`, which every role runs, and `dr-panel`, which so runs by default.
+(`dr-panel` replaces the published `rti-io`, the IO server from before it
+became the plugin `dr_panel`, which the role compose files no longer use.)
+For a Pi that is not flashed
 yet, `setup/pi-user-data.sh --role so|fsp` writes the same archives into a
 new Pi image instead, and the Pi starts them on first boot (see
 [setup/README.md](../setup/README.md#writing-an-image-to-an-sd-card-or-ssd)).
@@ -298,7 +239,7 @@ OUT="dist/rti-images-arm64"
 TAG="latest"            # or sha-<commit> to pin a build
 mkdir -p "${OUT}"
 
-for image in rti-fsp rti-so; do
+for image in rti-fsp rti-so dr-panel dr-leds; do
   docker pull --platform linux/arm64/v8 "${REGISTRY}/${image}:${TAG}"
   docker tag "${REGISTRY}/${image}:${TAG}" "${LOCAL}/${image}:latest"
   docker save "${LOCAL}/${image}:latest" | gzip > "${OUT}/${image}.tar.gz.partial"

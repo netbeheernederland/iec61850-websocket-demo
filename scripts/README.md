@@ -40,8 +40,7 @@ instead, so the Pi starts its role on first boot.
 ### Pis: use the published images instead of building
 
 ```bash
-scripts/pull-rti-demo.sh                           # fsp, so and dr-leds from GHCR
-scripts/build-rti-demo.sh dr-panel                 # not pulled; so runs it by default
+scripts/pull-rti-demo.sh                           # fsp, so, dr-panel and dr-leds from GHCR
 scripts/deploy-rti-demo.sh --start --role fsp 192.168.100.98
 ```
 

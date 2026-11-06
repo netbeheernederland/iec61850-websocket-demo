@@ -39,7 +39,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 REPO_URL="https://github.com/netbeheernederland/iec61850-websocket.git"
-BRANCH="initial-refactor"
+BRANCH="main"
 EXAMPLE_SUBDIR="examples/rti-demo"
 
 IMAGE_BASE="netbeheernederland/iec61850-websocket"

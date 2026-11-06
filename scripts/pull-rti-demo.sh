@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
-# Pull the arm64/v8 rti-demo images (fsp, so and the plugin dr-leds) from the
-# GitHub Container Registry and save them as .tar.gz archives for
-# deploy-rti-demo.sh, in place of building them with build-rti-demo.sh. See
-# docs/docker-images-github.md. The plugin dr-panel, which so runs by
-# default, isn't pulled: build it with build-rti-demo.sh dr-panel. (The
-# published rti-io is the IO server from before it became the plugin
-# dr_panel; the role compose files don't use it.)
+# Pull the arm64/v8 rti-demo images (fsp, so and the plugins dr-panel and
+# dr-leds) from the GitHub Container Registry and save them as .tar.gz
+# archives for deploy-rti-demo.sh, in place of building them with
+# build-rti-demo.sh. See docs/docker-images-github.md. (The published rti-io
+# is the IO server from before it became the plugin dr_panel; the role
+# compose files don't use it.)
 #
-# Usage: pull-rti-demo.sh [--tag TAG] [fsp] [so] [dr-leds]   (no images: all three)
+# Usage: pull-rti-demo.sh [--tag TAG] [fsp] [so] [dr-panel] [dr-leds]
+#        (no images: all four)
 #
 #   --tag TAG   registry tag to pull, e.g. sha-1a2b3c4 to pin a build
 #               (default: RTI_TAG, else latest)
 #
 # The images are re-tagged to the local names the compose files use
 # (netbeheernederland/iec61850-websocket/rti-<image>:latest, the plugin
-# .../dr-leds:latest) before saving, so deploy-rti-demo.sh and
+# .../dr-panel:latest and .../dr-leds:latest) before saving, so deploy-rti-demo.sh and
 # load-and-start.sh work unchanged.
 #
 # The images are public: no docker login is needed.
@@ -35,7 +35,7 @@ TAG="${RTI_TAG:-latest}"
 
 # Local name, as used by the compose files and build-rti-demo.sh
 IMAGE_BASE="netbeheernederland/iec61850-websocket"
-ALL_IMAGES=(fsp so dr-leds)
+ALL_IMAGES=(fsp so dr-panel dr-leds)
 
 # The image's name: rti-<image> for a base image, the plugin's own name
 image_name() {
@@ -67,7 +67,7 @@ while [ $# -gt 0 ]; do
         usage
       fi
       TAG="$2"; shift ;;
-    fsp|so|dr-leds) IMAGES+=("$1") ;;
+    fsp|so|dr-panel|dr-leds) IMAGES+=("$1") ;;
     *) echo "Unknown argument: $1" >&2; usage ;;
   esac
   shift
@@ -117,4 +117,4 @@ done
 
 echo "Images in ${RTI_IMAGE_DIR}:"
 ls -lh "${RTI_IMAGE_DIR}"
-echo "Next: scripts/build-rti-demo.sh dr-panel (if not done; so runs it), then scripts/deploy-rti-demo.sh [machine ...]"
+echo "Next: scripts/deploy-rti-demo.sh [machine ...]"

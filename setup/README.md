@@ -158,7 +158,7 @@ ssh rti@192.168.150.2 'sudo cloud-init status --wait && docker ps'
 ```
 
 `build-rti-demo.sh` clones the upstream `iec61850-websocket` repository
-(branch `initial-refactor`), builds each image with `docker buildx` and
+(branch `main`), builds each image with `docker buildx` and
 loads it into the host's Docker as
 `netbeheernederland/iec61850-websocket/rti-<role>:latest` (plugins as
 `.../dr-leds:latest` and `.../dr-panel:latest`), the names
