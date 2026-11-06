@@ -200,3 +200,12 @@ docs/                guides, decisions (ADRs) and specs
 - [Test certificates](setup/certs/README.md)
 - [Architecture decision records](docs/decisions/README.md)
 - Design specs and plans: [docs/specs/](docs/specs/)
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for how to report issues, sign off your commits (DCO) and open a pull request.
+This project follows the [Code of Conduct](CODE_OF_CONDUCT.md).
+
+## License
+
+Licensed under the [Apache License 2.0](LICENSE). The license texts are in [LICENSES/](LICENSES/).
